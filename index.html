@@ -1,0 +1,656 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow, noarchive">
+<meta name="googlebot" content="noindex, nofollow">
+<meta name="theme-color" content="#1f3a5f">
+<title>작업조건 관리</title>
+<style>
+:root{
+  --bg:#f3f5f8; --card:#fff; --ink:#18212b; --sub:#5d6b7a; --line:#d9e0e7;
+  --pri:#1f3a5f; --pri2:#2c5aa0; --acc:#e8f0fb; --warn:#b3541e; --chg:#fff1c2; --ok:#1f7a4d; --err:#b42318;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 -apple-system,"Malgun Gothic","Apple SD Gothic Neo",sans-serif}
+button,input,select,textarea{font:inherit;color:inherit}
+header{position:sticky;top:0;z-index:5;background:var(--pri);color:#fff;padding:10px 16px;display:flex;align-items:center;gap:10px}
+header h1{font-size:17px;margin:0;flex:1;cursor:pointer}
+header button{background:rgba(255,255,255,.15);border:0;color:#fff;border-radius:8px;padding:6px 10px}
+main{max-width:1100px;margin:0 auto;padding:12px 16px 100px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:12px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+.row>label{flex:1 1 180px}
+label{display:block;font-size:13px;color:var(--sub)}
+label>input,label>select,label>textarea{display:block;width:100%;margin-top:3px}
+input,select,textarea{border:1px solid var(--line);border-radius:8px;padding:9px 10px;background:#fff;min-height:42px}
+textarea{min-height:80px;resize:vertical}
+.btn{border:0;border-radius:10px;padding:10px 16px;background:var(--pri2);color:#fff;font-weight:600;cursor:pointer;min-height:42px}
+.btn.ghost{background:var(--acc);color:var(--pri)}
+.btn.danger{background:#fde8e6;color:var(--err)}
+.btn:disabled{opacity:.5}
+.fab{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom));z-index:6;border-radius:999px;padding:14px 20px;box-shadow:0 4px 14px rgba(0,0,0,.25);font-size:16px}
+.muted{color:var(--sub);font-size:13px}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{border:1px solid var(--line);background:#fff;border-radius:999px;padding:6px 12px;cursor:pointer;font-size:14px}
+.chip.on{background:var(--pri);border-color:var(--pri);color:#fff}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin:4px 0 12px;overflow-x:auto}
+.tab{border:0;background:none;padding:10px 12px;cursor:pointer;color:var(--sub);border-bottom:3px solid transparent;white-space:nowrap}
+.tab.on{color:var(--pri);border-color:var(--pri);font-weight:700}
+.plist{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:8px}
+.pitem{text-align:left;border:1px solid var(--line);background:#fff;border-radius:10px;padding:10px 12px;cursor:pointer}
+.pitem b{display:block}
+.kv{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px 14px}
+.kv div span{display:block;font-size:12px;color:var(--sub)}
+h2{font-size:18px;margin:0 0 6px}
+h3{font-size:15px;margin:14px 0 6px;color:var(--pri)}
+.grid-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table.g{border-collapse:collapse;font-size:14px;min-width:100%}
+table.g th,table.g td{border:1px solid var(--line);padding:5px 7px;text-align:center;white-space:nowrap}
+table.g th{background:#f0f3f7;font-weight:600;color:#33414f}
+table.g td.chg{background:var(--chg);font-weight:700}
+table.g td small{display:block;font-weight:400;color:var(--warn);font-size:11px}
+table.g input{width:64px;min-height:34px;padding:4px;text-align:center}
+.singles{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px}
+.single{border:1px solid var(--line);border-radius:8px;padding:6px 9px}
+.single span{display:block;font-size:12px;color:var(--sub)}
+.single.chg{background:var(--chg)}
+.single small{color:var(--warn);font-size:11px}
+.single input{width:100%;min-height:34px;padding:4px 6px}
+.thumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:6px}
+.thumb{position:relative;aspect-ratio:3/4;border-radius:8px;overflow:hidden;background:#dde3ea;cursor:pointer;border:0;padding:0}
+.thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.thumb .tag{position:absolute;left:4px;top:4px;background:rgba(0,0,0,.6);color:#fff;font-size:11px;border-radius:5px;padding:1px 5px}
+.tl{border-left:3px solid var(--acc);margin-left:6px;padding-left:12px}
+.tli{position:relative;margin-bottom:14px}
+.tli:before{content:"";position:absolute;left:-19px;top:6px;width:11px;height:11px;border-radius:50%;background:var(--pri2)}
+.tli .head{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.badge{font-size:12px;background:var(--acc);color:var(--pri);border-radius:6px;padding:1px 7px}
+.badge.m{background:#eef7f1;color:var(--ok)}
+.note{white-space:pre-wrap;background:#fbfaf6;border:1px solid #eee6cc;border-radius:8px;padding:8px 10px;margin:6px 0}
+.reclist{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px}
+.viewer{position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:20;display:flex;flex-direction:column}
+.viewer .vimg{flex:1;overflow:auto;display:flex;align-items:center;justify-content:center;touch-action:pinch-zoom}
+.viewer img{max-width:100%;max-height:100%}
+.viewer.zoom img{max-width:none;max-height:none}
+.viewer .vbar{display:flex;gap:8px;padding:10px 16px calc(10px + env(safe-area-inset-bottom));color:#fff;align-items:center}
+.viewer .vbar button{background:rgba(255,255,255,.18);color:#fff;border:0;border-radius:8px;padding:10px 14px}
+.modal{position:fixed;inset:0;background:rgba(10,20,30,.45);z-index:15;overflow:auto;padding:16px 0}
+.modal .card{max-width:860px;margin:0 auto}
+.newph{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px}
+.newph .it{border:1px solid var(--line);border-radius:8px;padding:4px;background:#fafbfc}
+.newph img{width:100%;aspect-ratio:3/4;object-fit:cover;border-radius:6px;display:block}
+.newph select{width:100%;min-height:34px;padding:4px;margin-top:4px}
+.newph .x{width:100%;margin-top:4px;min-height:32px;padding:4px}
+.toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:#18212b;color:#fff;padding:10px 16px;border-radius:10px;z-index:30;max-width:90vw}
+.hide{display:none!important}
+details>summary{cursor:pointer;font-weight:600;color:var(--pri);padding:6px 0}
+.empty{padding:20px;text-align:center;color:var(--sub)}
+.search{width:100%}
+@media (max-width:600px){ main{padding:10px 10px 100px} .card{padding:12px} }
+</style>
+</head>
+<body>
+<header>
+  <h1 id="home">🏭 작업조건 관리</h1>
+  <button id="reload" title="새로고침">↻</button>
+</header>
+<main id="app"><div class="empty">불러오는 중…</div></main>
+<button class="btn fab hide" id="fab">＋ 기록 추가</button>
+<div id="modal" class="modal hide"></div>
+<div id="viewer" class="viewer hide"></div>
+<div id="toast" class="toast hide"></div>
+
+<script>
+// ───────── 호기별 조건 양식 ─────────
+// 키 이름은 기존 엑셀 열 이름과 같게 맞춤
+const range = (a, b) => { const r = []; if (a <= b) for (let i = a; i <= b; i++) r.push(i); else for (let i = a; i >= b; i--) r.push(i); return r; };
+
+const TEMPLATES = {
+  A: {
+    name: '1~3호기 양식',
+    grids: [
+      { title: '사출 속도 (mm/s)', cols: range(1, 10), rows: [{ label: '속도', keys: range(1, 10).map(i => '사출속도' + i) }] },
+      { title: '보압 (bar)', cols: range(1, 10), rows: [{ label: '보압', keys: range(1, 10).map(i => '보압' + i) }] },
+      { title: '계량', cols: range(1, 5), rows: [
+        { label: '스크류 회전 (%)', keys: range(1, 5).map(i => '스크류회전' + i) },
+        { label: '배압 (bar)', keys: range(1, 5).map(i => '배압' + i) } ] },
+      { title: '온도 (℃)', cols: ['노즐1', '실2', '실3', '실4', '실5'], rows: [{ label: '온도', keys: ['노즐1', '실2', '실3', '실4', '실5'] }] },
+    ],
+    singles: [['사출압력', 'bar'], ['보압시간', 's'], ['냉각시간', 's'], ['계량스트로크', 'mm']],
+  },
+  B: {
+    name: '4~6호기 양식 (Selex)',
+    grids: [
+      { title: '형개', cols: range(1, 5), rows: [
+        { label: 'SP (%)', keys: range(1, 5).map(i => `형개 SP${i}(%)`) },
+        { label: 'PR (bar)', keys: range(1, 5).map(i => `형개 PR${i}(bar)`) },
+        { label: 'POS (mm)', keys: range(1, 4).map(i => `형개 POS${i}(mm)`).concat(['']) } ] },
+      { title: '형폐', cols: range(5, 1), rows: [
+        { label: 'SP (%)', keys: range(5, 1).map(i => `형폐 SP${i}(%)`) },
+        { label: 'PR (bar)', keys: range(5, 1).map(i => `형폐 PR${i}(bar)`) },
+        { label: 'POS (mm)', keys: range(5, 1).map(i => `형폐 POS${i}(mm)`) } ] },
+      { title: '사출', cols: range(4, 1), rows: [
+        { label: 'SP (%)', keys: range(4, 1).map(i => `사출 SP${i}(%)`) },
+        { label: 'PR (bar)', keys: range(4, 1).map(i => `사출 PR${i}(bar)`) },
+        { label: 'POS (mm)', keys: range(4, 1).map(i => `사출 POS${i}(mm)`) } ] },
+      { title: '보압', cols: ['3H', '2H', '1H'], rows: [
+        { label: 'SP (%)', keys: [3, 2, 1].map(i => `보압 SP${i}H(%)`) },
+        { label: 'PR (bar)', keys: [3, 2, 1].map(i => `보압 PR${i}H(bar)`) },
+        { label: 'TIME (s)', keys: [3, 2, 1].map(i => `보압 TIME${i}H(s)`) } ] },
+      { title: '계량', cols: ['1C', '2C', '3C', '4C'], rows: [
+        { label: 'SP (%)', keys: range(1, 4).map(i => `계량 SP${i}C(%)`) },
+        { label: 'PR (bar)', keys: range(1, 4).map(i => `계량 PR${i}C(bar)`) },
+        { label: '배압 BP (%)', keys: range(1, 4).map(i => `계량 BP${i}C(%)`) },
+        { label: 'POS (mm)', keys: range(1, 4).map(i => `계량 POS${i}C(mm)`) } ] },
+      { title: '석백 (2S)', cols: ['POS (mm)', 'SP (%)', 'PR (bar)'], rows: [
+        { label: '2S', keys: ['계량 POS2S(mm)', '계량 SP2S(%)', '계량 PR2S(bar)'] } ] },
+      { title: '노즐', cols: ['SP (%)', 'PR (bar)', 'POS (mm)'], rows: [
+        { label: '전진', keys: ['노즐전진 SP(%)', '노즐전진 PR(bar)', '노즐전진 POS(mm)'] },
+        { label: '후진', keys: ['노즐후진 SP(%)', '노즐후진 PR(bar)', '노즐후진 POS(mm)'] } ] },
+      { title: '형조정 / 저속', cols: ['SP (%)', 'PR (bar)'], rows: [
+        { label: '형조정 후진', keys: ['형조정후진 SP(%)', '형조정후진 PR(bar)'] },
+        { label: '형조정 전진', keys: ['형조정전진 SP(%)', '형조정전진 PR(bar)'] },
+        { label: '형개 저속', keys: ['형개저속 SP(%)', '형개저속 PR(bar)'] },
+        { label: '형폐 저속', keys: ['형폐저속 SP(%)', '형폐저속 PR(bar)'] } ] },
+      { title: '에젝터', cols: ['SP (%)', 'PR (bar)', 'POS (mm)'], rows: [
+        { label: '전진1', keys: ['에젝터전진1 SP(%)', '에젝터전진1 PR(bar)', '에젝터전진1 POS(mm)'] },
+        { label: '전진2', keys: ['에젝터전진2 SP(%)', '에젝터전진2 PR(bar)', '에젝터전진2 POS(mm)'] },
+        { label: '후진2', keys: ['에젝터후진2 SP(%)', '에젝터후진2 PR(bar)', '에젝터후진2 POS(mm)'] },
+        { label: '후진1', keys: ['에젝터후진1 SP(%)', '에젝터후진1 PR(bar)', '에젝터후진1 POS(mm)'] } ] },
+      { title: '히터 (℃)', cols: ['EN', 'NZ', '1', '2', '3', '4'], rows: [
+        { label: '온도', keys: ['히터 EN(℃)', '히터 NZ(℃)', '히터1(℃)', '히터2(℃)', '히터3(℃)', '히터4(℃)'] } ] },
+    ],
+    singles: [['사출시간(s)'], ['냉각시간(s)'], ['형폐시간(s)'], ['형개시간(s)'], ['에젝터횟수'], ['에젝터전진지연(s)'], ['에젝터후진지연(s)'],
+              ['사이클시간(s)'], ['실제 사출시간 (s)'], ['계량시간(s)']],
+  },
+};
+const MACHINES = ['1', '2', '3', '4', '5', '6'];
+const templateFor = m => (parseInt(m, 10) >= 4 ? 'B' : 'A');
+const PHOTO_TAGS = ['작업조건', '금형', '제품', '원료', '불량', '기타'];
+const singleKey = s => s[0];
+const singleLabel = s => s[1] ? `${s[0]} (${s[1]})` : s[0];
+
+// ───────── 상태 ─────────
+let RECORDS = [];
+const S = { customer: '', product: '', tab: 'cond', recId: '', photoTag: '', q: '' };
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const photoUrl = p => '/api/photo?p=' + encodeURIComponent(p);
+const keyOf = r => r.customer + '\u0001' + r.product;
+
+function toast(msg, ms = 2200) {
+  const t = $('#toast'); t.textContent = msg; t.classList.remove('hide');
+  clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.add('hide'), ms);
+}
+async function api(url, opt = {}) {
+  const r = await fetch(url, { headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', ...opt });
+  if (r.status === 401) { showLogin(); throw new Error('login'); }
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || ('오류 ' + r.status));
+  return j;
+}
+
+// ───────── URL 상태 (뒤로가기 지원) ─────────
+function pushState() {
+  const p = new URLSearchParams();
+  if (S.customer) p.set('c', S.customer);
+  if (S.product) p.set('p', S.product);
+  if (S.tab !== 'cond') p.set('t', S.tab);
+  if (S.recId) p.set('r', S.recId);
+  const u = location.pathname + (p.toString() ? '?' + p : '');
+  if (u !== location.pathname + location.search) history.pushState(null, '', u);
+}
+function readState() {
+  const p = new URLSearchParams(location.search);
+  S.customer = p.get('c') || ''; S.product = p.get('p') || ''; S.tab = p.get('t') || 'cond'; S.recId = p.get('r') || '';
+}
+window.addEventListener('popstate', () => { readState(); render(); });
+
+// ───────── 로그인 ─────────
+function showLogin() {
+  $('#fab').classList.add('hide');
+  $('#app').innerHTML = `<div class="card" style="max-width:360px;margin:40px auto">
+    <h2>비밀번호 입력</h2><p class="muted">공장 공용 비밀번호를 입력하세요. 이 기기에서는 1년 동안 기억합니다.</p>
+    <form id="lf"><input id="pin" type="password" inputmode="numeric" autocomplete="current-password" style="width:100%" placeholder="비밀번호">
+    <button class="btn" style="width:100%;margin-top:10px">들어가기</button></form></div>`;
+  $('#lf').onsubmit = async e => {
+    e.preventDefault();
+    try { await api('/api/login', { method: 'POST', body: JSON.stringify({ pin: $('#pin').value }) }); load(); }
+    catch (err) { if (err.message !== 'login') toast(err.message); }
+  };
+  $('#pin').focus();
+}
+
+async function load() {
+  try {
+    const j = await api('/api/records');
+    RECORDS = j.records || [];
+    $('#fab').classList.remove('hide');
+    render();
+  } catch (e) { if (e.message !== 'login') $('#app').innerHTML = `<div class="card empty">불러오기 실패: ${esc(e.message)}</div>`; }
+}
+
+// ───────── 데이터 묶기 ─────────
+function products() {
+  const m = new Map();
+  for (const r of RECORDS) {
+    const k = keyOf(r);
+    if (!m.has(k)) m.set(k, { customer: r.customer, product: r.product, productName: '', recs: [] });
+    const p = m.get(k); p.recs.push(r);
+    if (!p.productName && r.productName) p.productName = r.productName;
+  }
+  return [...m.values()];
+}
+const customers = () => [...new Set(RECORDS.map(r => r.customer))].sort((a, b) => a.localeCompare(b, 'ko'));
+const sortRecs = rs => rs.slice().sort((a, b) => (b.date || '').localeCompare(a.date || '') || (b.createdAt || '').localeCompare(a.createdAt || ''));
+const hasParams = r => r.params && r.params.values && Object.keys(r.params.values).length;
+
+// ───────── 화면 ─────────
+function render() {
+  window.scrollTo({ top: 0 });
+  if (S.customer && S.product) return renderProduct();
+  renderHome();
+}
+
+function renderHome() {
+  const cs = customers();
+  const ps = products().filter(p => (!S.customer || p.customer === S.customer) &&
+    (!S.q || (p.customer + ' ' + p.product + ' ' + p.productName).toLowerCase().includes(S.q.toLowerCase())));
+  ps.sort((a, b) => (sortRecs(b.recs)[0].date || '').localeCompare(sortRecs(a.recs)[0].date || ''));
+  $('#app').innerHTML = `
+    <div class="card">
+      <label>1) 거래처 선택</label>
+      <div class="chips" style="margin:6px 0 12px">
+        <button class="chip ${!S.customer ? 'on' : ''}" data-c="">전체</button>
+        ${cs.map(c => `<button class="chip ${S.customer === c ? 'on' : ''}" data-c="${esc(c)}">${esc(c)}</button>`).join('')}
+      </div>
+      <label>2) 제품 선택 <span class="muted">(제품코드·제품명 검색)</span>
+        <input class="search" id="q" value="${esc(S.q)}" placeholder="예: 20901526, 자석블럭"></label>
+    </div>
+    <div class="plist">
+      ${ps.map(p => {
+        const rs = sortRecs(p.recs); const last = rs[0];
+        const machines = [...new Set(rs.map(r => r.machine).filter(Boolean))].sort().map(m => m + '호기').join(', ');
+        const nPh = rs.reduce((n, r) => n + (r.photos || []).length, 0);
+        return `<button class="pitem" data-c="${esc(p.customer)}" data-p="${esc(p.product)}">
+          <span class="muted">${esc(p.customer)}</span><b>${esc(p.product)}${p.productName ? ' · ' + esc(p.productName) : ''}</b>
+          <span class="muted">최근 ${esc(last.date)} · ${esc(machines || '-')} · 기록 ${rs.length} · 사진 ${nPh}</span></button>`;
+      }).join('') || '<div class="empty">기록이 없습니다. 오른쪽 아래 ＋ 버튼으로 추가하세요.</div>'}
+    </div>`;
+  document.querySelectorAll('.chip[data-c]').forEach(b => b.onclick = () => { S.customer = b.dataset.c; pushState(); renderHome(); });
+  document.querySelectorAll('.pitem').forEach(b => b.onclick = () => { S.customer = b.dataset.c; S.product = b.dataset.p; S.tab = 'cond'; S.recId = ''; pushState(); render(); });
+  const q = $('#q'); q.oninput = () => { S.q = q.value; const pos = q.selectionStart; renderHome(); const n = $('#q'); n.focus(); n.setSelectionRange(pos, pos); };
+}
+
+function renderProduct() {
+  const rs = sortRecs(RECORDS.filter(r => r.customer === S.customer && r.product === S.product));
+  if (!rs.length) { S.product = ''; return renderHome(); }
+  const condRecs = rs.filter(hasParams);
+  const pName = (rs.find(r => r.productName) || {}).productName || '';
+  const lastOf = f => (rs.find(r => r[f]) || {})[f] || '-';
+  const machines = [...new Set(rs.map(r => r.machine).filter(Boolean))].sort().map(m => m + '호기').join(', ');
+  const photos = rs.flatMap(r => (r.photos || []).map(p => ({ ...p, rec: r })));
+  const sameCust = products().filter(p => p.customer === S.customer).sort((a, b) => a.product.localeCompare(b.product, 'ko'));
+
+  $('#app').innerHTML = `
+    <div class="card">
+      <div class="row">
+        <label>거래처<select id="selC">${customers().map(c => `<option ${c === S.customer ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select></label>
+        <label>제품<select id="selP">${sameCust.map(p => `<option value="${esc(p.product)}" ${p.product === S.product ? 'selected' : ''}>${esc(p.product)}${p.productName ? ' · ' + esc(p.productName) : ''}</option>`).join('')}</select></label>
+      </div>
+      <h2 style="margin-top:12px">${esc(S.product)}${pName ? ' <span class="muted">' + esc(pName) + '</span>' : ''}</h2>
+      <div class="kv">
+        <div><span>최근 원료</span>${esc(lastOf('material'))}</div>
+        <div><span>금형번호</span>${esc(lastOf('mold'))}</div>
+        <div><span>작업 호기</span>${esc(machines || '-')}</div>
+        <div><span>최근 작업</span>${esc(rs[0].date)}</div>
+        <div><span>기록 / 사진</span>${rs.length}건 / ${photos.length}장</div>
+      </div>
+    </div>
+    <div class="tabs">
+      <button class="tab ${S.tab === 'cond' ? 'on' : ''}" data-t="cond">작업조건 (${condRecs.length})</button>
+      <button class="tab ${S.tab === 'photo' ? 'on' : ''}" data-t="photo">사진 (${photos.length})</button>
+      <button class="tab ${S.tab === 'log' ? 'on' : ''}" data-t="log">원료·특이사항 기록 (${rs.length})</button>
+    </div>
+    <div id="tabbody"></div>`;
+  $('#selC').onchange = e => { S.customer = e.target.value; S.product = ''; pushState(); render(); };
+  $('#selP').onchange = e => { S.product = e.target.value; S.recId = ''; pushState(); render(); };
+  document.querySelectorAll('.tab').forEach(b => b.onclick = () => { S.tab = b.dataset.t; pushState(); renderProduct(); });
+
+  const body = $('#tabbody');
+  if (S.tab === 'cond') body.innerHTML = condView(condRecs);
+  else if (S.tab === 'photo') body.innerHTML = photoView(photos);
+  else body.innerHTML = logView(rs);
+  bindCommon(body);
+}
+
+function condView(condRecs) {
+  if (!condRecs.length) return `<div class="card empty">아직 수치로 입력된 작업조건이 없습니다.<br>사진 탭에서 조건 사진을 확인하거나, ＋ 기록 추가에서 수치를 입력하세요.</div>`;
+  const cur = condRecs.find(r => r.id === S.recId) || condRecs[0];
+  const tpl = cur.params.template || templateFor(cur.machine);
+  const prev = condRecs.slice(condRecs.indexOf(cur) + 1).find(r => (r.params.template || templateFor(r.machine)) === tpl);
+  const pv = prev ? prev.params.values : null;
+  const condPhotos = (cur.photos || []);
+  return `
+    <div class="card">
+      <label>조건 기록 선택 (최신순)</label>
+      <div class="reclist" style="margin-top:6px">
+        ${condRecs.map(r => `<button class="chip ${r === cur ? 'on' : ''}" data-rec="${esc(r.id)}">${esc(r.date)} · ${esc(r.machine || '?')}호기</button>`).join('')}
+      </div>
+      <div class="kv" style="margin-top:10px">
+        <div><span>날짜 / 호기</span>${esc(cur.date)} / ${esc(cur.machine || '-')}호기</div>
+        <div><span>원료</span>${esc(cur.material || '-')}</div>
+        <div><span>금형번호</span>${esc(cur.mold || '-')}</div>
+        <div><span>작업자</span>${esc(cur.worker || '-')}</div>
+      </div>
+      ${cur.notes ? `<div class="note">${esc(cur.notes)}</div>` : ''}
+      ${prev ? `<p class="muted">노란 칸 = 이전 기록(${esc(prev.date)} ${esc(prev.machine)}호기)과 달라진 값, 아래 작은 글씨가 이전 값</p>` : ''}
+      ${paramTables(TEMPLATES[tpl], cur.params.values, pv)}
+      ${condPhotos.length ? `<h3>이 기록의 사진 (${condPhotos.length})</h3>${thumbs(condPhotos.map(p => ({ ...p, rec: cur })))}` : ''}
+      <div class="row" style="margin-top:12px">
+        <button class="btn ghost" data-copy="${esc(cur.id)}">이 조건으로 새 기록 작성</button>
+        <button class="btn ghost" data-edit="${esc(cur.id)}">수정</button>
+      </div>
+    </div>`;
+}
+
+function paramTables(T, vals, pv, editable) {
+  const cell = k => {
+    if (!k) return '<td></td>';
+    const v = vals[k] ?? '';
+    if (editable) return `<td><input data-k="${esc(k)}" value="${esc(v)}" inputmode="decimal"></td>`;
+    const changed = pv && (pv[k] ?? '') !== v;
+    return `<td class="${changed ? 'chg' : ''}">${esc(v || '·')}${changed ? `<small>${esc(pv[k] ?? '없음')}</small>` : ''}</td>`;
+  };
+  const grids = T.grids.map(g => {
+    if (!editable && !g.rows.some(r => r.keys.some(k => k && vals[k]))) return '';
+    return `<h3>${esc(g.title)}</h3><div class="grid-wrap"><table class="g">
+      <tr><th></th>${g.cols.map(c => `<th>${esc(c)}</th>`).join('')}</tr>
+      ${g.rows.map(r => `<tr><th>${esc(r.label)}</th>${r.keys.map(cell).join('')}</tr>`).join('')}
+    </table></div>`;
+  }).join('');
+  const singles = T.singles.filter(s => editable || vals[singleKey(s)]).map(s => {
+    const k = singleKey(s), v = vals[k] ?? '';
+    if (editable) return `<div class="single"><span>${esc(singleLabel(s))}</span><input data-k="${esc(k)}" value="${esc(v)}" inputmode="decimal"></div>`;
+    const changed = pv && (pv[k] ?? '') !== v;
+    return `<div class="single ${changed ? 'chg' : ''}"><span>${esc(singleLabel(s))}</span><b>${esc(v)}</b>${changed ? ` <small>이전 ${esc(pv[k] ?? '없음')}</small>` : ''}</div>`;
+  }).join('');
+  // 양식에 없는 값(예전 양식 등)도 버리지 않고 표시
+  const known = new Set(T.grids.flatMap(g => g.rows.flatMap(r => r.keys)).concat(T.singles.map(singleKey)));
+  const extra = editable ? '' : Object.keys(vals).filter(k => !known.has(k)).map(k =>
+    `<div class="single"><span>${esc(k)}</span><b>${esc(vals[k])}</b></div>`).join('');
+  return grids + (singles || extra ? `<h3>시간·기타</h3><div class="singles">${singles}${extra}</div>` : '');
+}
+
+function thumbs(list) {
+  return `<div class="thumbs">${list.map((p, i) => `<button class="thumb" data-ph="${esc(p.path)}" data-i="${i}">
+    <img loading="lazy" src="${photoUrl(p.path)}" alt="">${p.tag ? `<span class="tag">${esc(p.tag)}</span>` : ''}</button>`).join('')}</div>`;
+}
+
+function photoView(photos) {
+  const tags = [...new Set(photos.map(p => p.tag || '기타'))];
+  const list = photos.filter(p => !S.photoTag || (p.tag || '기타') === S.photoTag);
+  if (!photos.length) return `<div class="card empty">사진이 없습니다.</div>`;
+  // 기록별로 묶어서 표시
+  const groups = [];
+  for (const p of list) { const g = groups.find(g => g.rec === p.rec); if (g) g.ps.push(p); else groups.push({ rec: p.rec, ps: [p] }); }
+  return `<div class="card">
+    <div class="chips"><button class="chip ${!S.photoTag ? 'on' : ''}" data-tag="">전체</button>
+      ${tags.map(t => `<button class="chip ${S.photoTag === t ? 'on' : ''}" data-tag="${esc(t)}">${esc(t)}</button>`).join('')}</div>
+    ${groups.map(g => `<h3>${esc(g.rec.date)} · ${esc(g.rec.machine || '?')}호기 ${g.rec.material ? '· ' + esc(g.rec.material) : ''}</h3>${thumbs(g.ps)}`).join('')}
+  </div>`;
+}
+
+function logView(rs) {
+  return `<div class="card"><div class="tl">${rs.map(r => `
+    <div class="tli">
+      <div class="head"><b>${esc(r.date)}</b><span class="badge">${esc(r.machine || '?')}호기</span>
+        ${hasParams(r) ? '<span class="badge m">조건 수치</span>' : ''}
+        ${r.worker ? `<span class="muted">작업자 ${esc(r.worker)}</span>` : ''}</div>
+      ${r.material ? `<div>원료: <b>${esc(r.material)}</b></div>` : ''}
+      ${r.mold ? `<div class="muted">금형번호: ${esc(r.mold)}</div>` : ''}
+      ${r.notes ? `<div class="note">${esc(r.notes)}</div>` : ''}
+      ${(r.photos || []).length ? thumbs(r.photos.map(p => ({ ...p, rec: r }))) : ''}
+      <div class="row" style="margin-top:6px">
+        ${hasParams(r) ? `<button class="btn ghost" data-rec="${esc(r.id)}" data-goto="cond">조건 보기</button>` : ''}
+        <button class="btn ghost" data-edit="${esc(r.id)}">수정</button>
+        <button class="btn danger" data-del="${esc(r.id)}">삭제</button>
+      </div>
+    </div>`).join('')}</div></div>`;
+}
+
+function bindCommon(root) {
+  root.querySelectorAll('[data-rec]').forEach(b => b.onclick = () => { S.recId = b.dataset.rec; if (b.dataset.goto) S.tab = b.dataset.goto; pushState(); renderProduct(); });
+  root.querySelectorAll('[data-tag]').forEach(b => b.onclick = () => { S.photoTag = b.dataset.tag; renderProduct(); });
+  root.querySelectorAll('[data-edit]').forEach(b => b.onclick = () => openForm({ edit: RECORDS.find(r => r.id === b.dataset.edit) }));
+  root.querySelectorAll('[data-copy]').forEach(b => b.onclick = () => openForm({ copy: RECORDS.find(r => r.id === b.dataset.copy) }));
+  root.querySelectorAll('[data-del]').forEach(b => b.onclick = async () => {
+    const r = RECORDS.find(x => x.id === b.dataset.del);
+    if (!confirm(`${r.date} ${r.machine}호기 기록과 사진 ${(r.photos || []).length}장을 삭제할까요? 되돌릴 수 없습니다.`)) return;
+    try { await api('/api/records?id=' + encodeURIComponent(r.id), { method: 'DELETE' }); RECORDS = RECORDS.filter(x => x !== r); toast('삭제했습니다'); render(); }
+    catch (e) { toast(e.message); }
+  });
+  root.querySelectorAll('.thumb').forEach(b => b.onclick = () => {
+    const all = [...root.querySelectorAll('.thumb')].map(x => x.dataset.ph);
+    openViewer(all, all.indexOf(b.dataset.ph));
+  });
+}
+
+// ───────── 사진 크게 보기 ─────────
+function openViewer(list, i) {
+  const v = $('#viewer');
+  const show = () => {
+    v.innerHTML = `<div class="vimg"><img src="${photoUrl(list[i])}"></div>
+      <div class="vbar"><button id="vx">닫기</button><button id="vp">◀</button><span>${i + 1} / ${list.length}</span><button id="vn">▶</button>
+      <button id="vz">확대</button><a href="${photoUrl(list[i])}" target="_blank" style="color:#fff;margin-left:auto">원본</a></div>`;
+    $('#vx').onclick = () => { v.classList.add('hide'); v.classList.remove('zoom'); };
+    $('#vp').onclick = () => { i = (i - 1 + list.length) % list.length; show(); };
+    $('#vn').onclick = () => { i = (i + 1) % list.length; show(); };
+    $('#vz').onclick = () => v.classList.toggle('zoom');
+  };
+  v.classList.remove('hide'); show();
+}
+document.addEventListener('keydown', e => {
+  if ($('#viewer').classList.contains('hide')) return;
+  if (e.key === 'Escape') $('#vx').click(); if (e.key === 'ArrowLeft') $('#vp').click(); if (e.key === 'ArrowRight') $('#vn').click();
+});
+
+// ───────── 기록 추가/수정 ─────────
+function openForm({ edit, copy } = {}) {
+  const base = edit || copy || {};
+  const today = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+  const F = {
+    id: edit ? edit.id : '',
+    date: edit ? edit.date : today,
+    machine: base.machine || '',
+    customer: base.customer || S.customer || '',
+    product: base.product || S.product || '',
+    productName: base.productName || '',
+    material: base.material || '',
+    mold: base.mold || '',
+    worker: edit ? edit.worker || '' : localStorageGet('worker'),
+    notes: edit ? edit.notes || '' : '',
+    photos: edit ? (edit.photos || []).map(p => ({ ...p })) : [],
+    values: { ...((base.params && base.params.values) || {}) },
+  };
+  if (!edit && !copy && F.customer && F.product) {
+    const last = sortRecs(RECORDS.filter(r => r.customer === F.customer && r.product === F.product))[0];
+    if (last) { F.machine = last.machine || ''; F.material = last.material || ''; F.mold = last.mold || ''; F.productName = last.productName || ''; }
+  }
+  const newPhotos = []; // {file, dataUrl, tag, w, h}
+  const m = $('#modal');
+  const allProducts = products();
+
+  m.innerHTML = `<div class="card">
+    <h2>${edit ? '기록 수정' : '기록 추가'}</h2>
+    <div class="row">
+      <label>날짜<input type="date" id="fDate" value="${esc(F.date)}"></label>
+      <label>작업자<input id="fWorker" value="${esc(F.worker)}" placeholder="이름"></label>
+    </div>
+    <label style="margin-top:8px">호기</label>
+    <div class="chips" id="fMach" style="margin:4px 0 8px">${MACHINES.map(x => `<button type="button" class="chip ${F.machine === x ? 'on' : ''}" data-m="${x}">${x}호기</button>`).join('')}</div>
+    <div class="row">
+      <label>거래처 *<input id="fCust" list="dlC" value="${esc(F.customer)}" placeholder="예: 리드앤플레이"></label>
+      <label>제품코드 / 제품 *<input id="fProd" list="dlP" value="${esc(F.product)}" placeholder="예: 20901526"></label>
+      <label>제품명 (선택)<input id="fPName" value="${esc(F.productName)}" placeholder="설명이 필요하면"></label>
+    </div>
+    <datalist id="dlC">${customers().map(c => `<option value="${esc(c)}">`).join('')}</datalist>
+    <datalist id="dlP"></datalist>
+    <div class="row" style="margin-top:8px">
+      <label>원료명<input id="fMat" list="dlM" value="${esc(F.material)}" placeholder="예: ABS LG121H"></label>
+      <label>금형번호<input id="fMold" value="${esc(F.mold)}" placeholder="예: 2603"></label>
+    </div>
+    <datalist id="dlM">${[...new Set(RECORDS.map(r => r.material).filter(Boolean))].map(x => `<option value="${esc(x)}">`).join('')}</datalist>
+    <label style="margin-top:8px">특이사항<textarea id="fNotes" placeholder="불량, 조정 내용, 주의할 점 등">${esc(F.notes)}</textarea></label>
+
+    <h3>사진</h3>
+    <div class="row">
+      <button type="button" class="btn ghost" id="fCam">📷 카메라로 찍기</button>
+      <button type="button" class="btn ghost" id="fAlb">🖼 앨범에서 고르기</button>
+      <input type="file" id="fileCam" accept="image/*" capture="environment" multiple class="hide">
+      <input type="file" id="fileAlb" accept="image/*" multiple class="hide">
+    </div>
+    <p class="muted">사진마다 종류(작업조건·금형·제품·원료·불량·기타)를 골라 주세요.</p>
+    <div class="newph" id="fPh"></div>
+
+    <details id="fParDet" ${Object.keys(F.values).length ? 'open' : ''} style="margin-top:12px">
+      <summary>작업조건 수치 입력 (선택)</summary>
+      <div class="row" style="margin:6px 0"><button type="button" class="btn ghost" id="fLoadPrev">이 제품의 최근 조건 불러오기</button>
+        <button type="button" class="btn ghost" id="fClear">모두 지우기</button></div>
+      <p class="muted" id="fTplName"></p>
+      <div id="fPar"></div>
+    </details>
+
+    <div class="row" style="margin-top:16px;justify-content:flex-end">
+      <span class="muted" id="fStatus" style="flex:1"></span>
+      <button type="button" class="btn ghost" id="fCancel">취소</button>
+      <button type="button" class="btn" id="fSave">저장</button>
+    </div>
+  </div>`;
+  m.classList.remove('hide');
+  m.scrollTop = 0;
+
+  const fillProdList = () => {
+    const c = $('#fCust').value.trim();
+    $('#dlP').innerHTML = allProducts.filter(p => !c || p.customer === c).map(p => `<option value="${esc(p.product)}">${esc(p.productName)}</option>`).join('');
+  };
+  fillProdList();
+  $('#fCust').oninput = fillProdList;
+
+  const collectValues = () => { $('#fPar').querySelectorAll('input[data-k]').forEach(i => { F.values[i.dataset.k] = i.value.trim(); }); };
+  const renderPar = () => {
+    const tpl = templateFor(F.machine || '1');
+    $('#fTplName').textContent = F.machine ? `${F.machine}호기 → ${TEMPLATES[tpl].name}` : '호기를 먼저 고르면 해당 양식이 나옵니다 (지금은 1~3호기 양식)';
+    $('#fPar').innerHTML = paramTables(TEMPLATES[tpl], F.values, null, true);
+  };
+  renderPar();
+
+  $('#fMach').querySelectorAll('[data-m]').forEach(b => b.onclick = () => {
+    collectValues(); F.machine = b.dataset.m;
+    $('#fMach').querySelectorAll('.chip').forEach(x => x.classList.toggle('on', x === b));
+    renderPar();
+  });
+  $('#fLoadPrev').onclick = () => {
+    const c = $('#fCust').value.trim(), p = $('#fProd').value.trim(), tpl = templateFor(F.machine || '1');
+    const prev = sortRecs(RECORDS.filter(r => r.customer === c && r.product === p && hasParams(r) && (r.params.template || templateFor(r.machine)) === tpl && r.id !== F.id))[0];
+    if (!prev) return toast('같은 양식의 이전 조건이 없습니다');
+    F.values = { ...prev.params.values }; renderPar(); toast(`${prev.date} ${prev.machine}호기 조건을 불러왔습니다`);
+  };
+  $('#fClear').onclick = () => { F.values = {}; renderPar(); };
+
+  const renderPh = () => {
+    const box = $('#fPh');
+    box.innerHTML = F.photos.map((p, i) => phItem(photoUrl(p.path), p.tag, 'o' + i)).join('') +
+      newPhotos.map((p, i) => phItem(p.dataUrl, p.tag, 'n' + i)).join('');
+    box.querySelectorAll('select').forEach(s => s.onchange = () => {
+      const [t, i] = [s.dataset.id[0], +s.dataset.id.slice(1)]; (t === 'o' ? F.photos : newPhotos)[i].tag = s.value;
+    });
+    box.querySelectorAll('.x').forEach(b => b.onclick = () => {
+      const [t, i] = [b.dataset.id[0], +b.dataset.id.slice(1)]; (t === 'o' ? F.photos : newPhotos).splice(i, 1); renderPh();
+    });
+  };
+  const phItem = (src, tag, id) => `<div class="it"><img src="${src}"><select data-id="${id}">${PHOTO_TAGS.map(t => `<option ${t === tag ? 'selected' : ''}>${t}</option>`).join('')}</select>
+    <button type="button" class="btn danger x" data-id="${id}">빼기</button></div>`;
+  renderPh();
+
+  const addFiles = async files => {
+    $('#fStatus').textContent = '사진 줄이는 중…';
+    for (const f of files) {
+      try { const r = await shrink(f); newPhotos.push({ ...r, tag: newPhotos.length || F.photos.length ? (newPhotos.at(-1)?.tag || '작업조건') : '작업조건' }); }
+      catch { toast('사진을 읽지 못했습니다: ' + f.name); }
+    }
+    $('#fStatus').textContent = ''; renderPh();
+  };
+  $('#fCam').onclick = () => $('#fileCam').click();
+  $('#fAlb').onclick = () => $('#fileAlb').click();
+  $('#fileCam').onchange = e => { addFiles([...e.target.files]); e.target.value = ''; };
+  $('#fileAlb').onchange = e => { addFiles([...e.target.files]); e.target.value = ''; };
+
+  $('#fCancel').onclick = () => { if (newPhotos.length && !confirm('저장하지 않은 사진이 있습니다. 닫을까요?')) return; m.classList.add('hide'); m.innerHTML = ''; };
+
+  $('#fSave').onclick = async () => {
+    collectValues();
+    const rec = {
+      id: F.id || undefined,
+      date: $('#fDate').value, machine: F.machine, customer: $('#fCust').value.trim(), product: $('#fProd').value.trim(),
+      productName: $('#fPName').value.trim(), material: $('#fMat').value.trim(), mold: $('#fMold').value.trim(),
+      worker: $('#fWorker').value.trim(), notes: $('#fNotes').value.trim(),
+    };
+    if (!rec.customer || !rec.product) return toast('거래처와 제품코드를 입력하세요');
+    if (!rec.machine && !confirm('호기를 고르지 않았습니다. 그대로 저장할까요?')) return;
+    const vals = Object.fromEntries(Object.entries(F.values).filter(([, v]) => v !== ''));
+    rec.params = { template: templateFor(rec.machine || '1'), values: vals };
+    localStorageSet('worker', rec.worker);
+    const btn = $('#fSave'); btn.disabled = true;
+    try {
+      const photos = F.photos.slice();
+      for (let i = 0; i < newPhotos.length; i++) {
+        $('#fStatus').textContent = `사진 올리는 중 ${i + 1} / ${newPhotos.length}`;
+        const p = newPhotos[i];
+        const j = await api('/api/photo', { method: 'POST', body: JSON.stringify({ data: p.dataUrl }) });
+        photos.push({ path: j.path, tag: p.tag, w: p.w, h: p.h });
+        p.dataUrl = photoUrl(j.path); // 실패 후 다시 저장 시 중복 업로드 방지
+        F.photos.push(photos.at(-1)); newPhotos.splice(i, 1); i--;
+      }
+      rec.photos = photos;
+      $('#fStatus').textContent = '저장 중…';
+      const j = await api('/api/records', { method: 'POST', body: JSON.stringify(rec) });
+      RECORDS = RECORDS.filter(r => r.id !== j.record.id).concat([j.record]);
+      m.classList.add('hide'); m.innerHTML = '';
+      S.customer = j.record.customer; S.product = j.record.product;
+      S.tab = hasParams(j.record) ? 'cond' : 'log'; S.recId = j.record.id;
+      pushState(); render(); toast('저장했습니다');
+    } catch (e) {
+      $('#fStatus').textContent = ''; btn.disabled = false;
+      if (e.message !== 'login') toast('저장 실패: ' + e.message + ' (다시 저장을 눌러 주세요)', 4000);
+    }
+  };
+}
+
+// 휴대폰 사진을 긴 변 1800px JPEG로 줄임
+async function shrink(file) {
+  const MAX = 1800;
+  let bmp;
+  try { bmp = await createImageBitmap(file, { imageOrientation: 'from-image' }); }
+  catch {
+    bmp = await new Promise((ok, bad) => { const im = new Image(); im.onload = () => ok(im); im.onerror = bad; im.src = URL.createObjectURL(file); });
+  }
+  const w0 = bmp.width, h0 = bmp.height, s = Math.min(1, MAX / Math.max(w0, h0));
+  const w = Math.round(w0 * s), h = Math.round(h0 * s);
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  c.getContext('2d').drawImage(bmp, 0, 0, w, h);
+  return { dataUrl: c.toDataURL('image/jpeg', 0.82), w, h };
+}
+function localStorageGet(k) { try { return localStorage.getItem('wc_' + k) || ''; } catch { return ''; } }
+function localStorageSet(k, v) { try { localStorage.setItem('wc_' + k, v); } catch {} }
+
+$('#fab').onclick = () => openForm();
+$('#home').onclick = () => { S.customer = ''; S.product = ''; S.recId = ''; S.tab = 'cond'; pushState(); render(); };
+$('#reload').onclick = () => load();
+readState();
+load();
+</script>
+</body>
+</html>

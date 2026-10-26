@@ -1,0 +1,17 @@
+{
+  "name": "work-conditions",
+  "version": "1.0.0",
+  "description": "공장 설비 작업조건 관리",
+  "scripts": {
+    "dev": "node tools/dev-server.mjs"
+  },
+  "license": "UNLICENSED",
+  "type": "module",
+  "dependencies": {
+    "@vercel/blob": "^2.8.2"
+  },
+  "private": true,
+  "engines": {
+    "node": ">=20"
+  }
+}
