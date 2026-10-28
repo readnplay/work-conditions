@@ -67,11 +67,11 @@ export default async function handler(req, res) {
 
   client ||= new Anthropic();
   try {
-    const response = await client.beta.messages.create({
-      model: 'claude-opus-5-5',
+    // 사진이 많아 비용이 적은 Haiku 사용(사용자 선택). 서버 측 fallback 없음
+    const response = await client.messages.create({
+      model: 'claude-haiku-5-5',
       max_tokens: 16000,
-      betas: ['server-side-fallback-2026-07-01'],
-      fallbacks: 'default',
+      thinking: { type: 'adaptive' },
       output_config: { effort: 'medium', format: { type: 'json_schema', schema: SCHEMA(keyList) } },
       system: SYSTEM,
       messages: [{
