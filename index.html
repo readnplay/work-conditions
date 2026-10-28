@@ -135,14 +135,15 @@ const TEMPLATES = {
   B: {
     name: '4~6호기 양식 (Selex)',
     grids: [
-      { title: '형개', cols: range(1, 5), rows: [
-        { label: 'SP (%)', keys: range(1, 5).map(i => `형개 SP${i}(%)`) },
-        { label: 'PR (bar)', keys: range(1, 5).map(i => `형개 PR${i}(bar)`) },
-        { label: 'POS (mm)', keys: range(1, 4).map(i => `형개 POS${i}(mm)`).concat(['']) } ] },
-      { title: '형폐', cols: range(5, 1), rows: [
-        { label: 'SP (%)', keys: range(5, 1).map(i => `형폐 SP${i}(%)`) },
-        { label: 'PR (bar)', keys: range(5, 1).map(i => `형폐 PR${i}(bar)`) },
-        { label: 'POS (mm)', keys: range(5, 1).map(i => `형폐 POS${i}(mm)`) } ] },
+      // 02 형체 화면: 왼쪽 표 = 형폐(1→5), 오른쪽 표 = 형개(5→1). (예전 엑셀은 둘이 반대로 적혀 있었음 → 2026-10-28 바로잡음)
+      { title: '형폐', cols: range(1, 5), rows: [
+        { label: '속도 SP (%)', keys: range(1, 5).map(i => `형폐 SP${i}(%)`) },
+        { label: '압력 PR (bar)', keys: range(1, 5).map(i => `형폐 PR${i}(bar)`) },
+        { label: '거리 POS (mm)', keys: range(1, 4).map(i => `형폐 POS${i}(mm)`).concat(['']) } ] },
+      { title: '형개', cols: range(5, 1), rows: [
+        { label: '속도 SP (%)', keys: range(5, 1).map(i => `형개 SP${i}(%)`) },
+        { label: '압력 PR (bar)', keys: range(5, 1).map(i => `형개 PR${i}(bar)`) },
+        { label: '거리 POS (mm)', keys: range(5, 1).map(i => `형개 POS${i}(mm)`) } ] },
       { title: '사출', cols: range(4, 1), rows: [
         { label: 'SP (%)', keys: range(4, 1).map(i => `사출 SP${i}(%)`) },
         { label: 'PR (bar)', keys: range(4, 1).map(i => `사출 PR${i}(bar)`) },

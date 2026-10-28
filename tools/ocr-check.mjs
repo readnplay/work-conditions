@@ -1,7 +1,8 @@
 // 사진 인식 정확도 확인: 엑셀 값이 있는 기존 기록의 사진을 읽게 해서, 읽은 값과 엑셀 값을 비교
 // 사용: node tools/ocr-check.mjs <앱주소> <비밀번호> [기록 수(기본 2)]
 // 기록은 바꾸지 않고 비교 결과만 출력합니다.
-const [baseUrl, pin, nArg = '2'] = process.argv.slice(2);
+const [baseUrl, pin, nArg = '2', outFile = ''] = process.argv.slice(2);
+const dump = [];
 if (!baseUrl || !pin) { console.error('사용: node tools/ocr-check.mjs <앱주소> <비밀번호> [기록 수]'); process.exit(1); }
 
 let cookie = '';
@@ -30,6 +31,7 @@ for (const r of picks) {
     try {
       const j = await call('/api/ocr', { method: 'POST', body: JSON.stringify({ path: ph.path, machine: r.machine, keys }) });
       items += j.result.items.length;
+      dump.push({ record: r.id, photo: ph.path, ...j.result });
       for (const m of j.result.mapped) if (!(m.key in got)) got[m.key] = m.value;
     } catch (e) { console.log('  실패', ph.path, e.message); }
   }
@@ -43,3 +45,4 @@ for (const r of picks) {
   console.log(`  엑셀 칸 ${keys.length}개 중: 맞음 ${ok}, 틀림 ${wrong.length}, 못 찾음 ${missing} · 화면에서 읽은 값 총 ${items}개`);
   for (const w of wrong.slice(0, 15)) console.log('   ✗ ' + w);
 }
+if (outFile) (await import('node:fs')).writeFileSync(outFile, JSON.stringify(dump, null, 1));
