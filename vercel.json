@@ -2,6 +2,11 @@
   "regions": [
     "icn1"
   ],
+  "functions": {
+    "api/ocr.js": {
+      "maxDuration": 120
+    }
+  },
   "headers": [
     {
       "source": "/(.*)",

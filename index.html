@@ -88,12 +88,24 @@ table.g input{width:64px;min-height:34px;padding:4px;text-align:center}
 details>summary{cursor:pointer;font-weight:600;color:var(--pri);padding:6px 0}
 .empty{padding:20px;text-align:center;color:var(--sub)}
 .search{width:100%}
+.pitem.none{opacity:.65;border-style:dashed}
+.pick{display:flex;flex-direction:column;gap:4px;max-height:260px;overflow:auto;margin-top:6px}
+.pick button{text-align:left;border:1px solid var(--line);background:#fff;border-radius:8px;padding:8px 10px;cursor:pointer}
+.pick button.on{border-color:var(--pri2);background:var(--acc)}
+table.g input.ai,.single input.ai{background:#e3f0ff;border-color:#8bb4e8}
+.aibox{background:#eef5ff;border:1px solid #c7dbf5;border-radius:10px;padding:10px 12px;margin-top:8px}
+.ocrtag{font-size:11px;color:var(--pri2)}
+table.s{border-collapse:collapse;font-size:13px;width:100%}
+table.s td,table.s th{border-bottom:1px solid var(--line);padding:4px 6px;text-align:left}
+table.s td.v{text-align:right;font-weight:600;white-space:nowrap}
+.catrow{display:flex;gap:8px;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line);padding:8px 0}
 @media (max-width:600px){ main{padding:10px 10px 100px} .card{padding:12px} }
 </style>
 </head>
 <body>
 <header>
   <h1 id="home">🏭 작업조건 관리</h1>
+  <button id="catBtn" title="거래처별 제품 목록">제품목록</button>
   <button id="reload" title="새로고침">↻</button>
 </header>
 <main id="app"><div class="empty">불러오는 중…</div></main>
@@ -171,10 +183,12 @@ const templateFor = m => (parseInt(m, 10) >= 4 ? 'B' : 'A');
 const PHOTO_TAGS = ['작업조건', '금형', '제품', '원료', '불량', '기타'];
 const singleKey = s => s[0];
 const singleLabel = s => s[1] ? `${s[0]} (${s[1]})` : s[0];
+const templateKeys = t => TEMPLATES[t].grids.flatMap(g => g.rows.flatMap(r => r.keys)).filter(Boolean).concat(TEMPLATES[t].singles.map(singleKey));
 
 // ───────── 상태 ─────────
 let RECORDS = [];
-const S = { customer: '', product: '', tab: 'cond', recId: '', photoTag: '', q: '' };
+let CATALOG = { customers: [] }; // 거래처별 제품 목록 [{name, products:[{code,name,note}]}]
+const S = { view: '', customer: '', product: '', tab: 'cond', recId: '', photoTag: '', q: '' };
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const photoUrl = p => '/api/photo?p=' + encodeURIComponent(p);
@@ -195,6 +209,7 @@ async function api(url, opt = {}) {
 // ───────── URL 상태 (뒤로가기 지원) ─────────
 function pushState() {
   const p = new URLSearchParams();
+  if (S.view) p.set('v', S.view);
   if (S.customer) p.set('c', S.customer);
   if (S.product) p.set('p', S.product);
   if (S.tab !== 'cond') p.set('t', S.tab);
@@ -204,7 +219,7 @@ function pushState() {
 }
 function readState() {
   const p = new URLSearchParams(location.search);
-  S.customer = p.get('c') || ''; S.product = p.get('p') || ''; S.tab = p.get('t') || 'cond'; S.recId = p.get('r') || '';
+  S.view = p.get('v') || ''; S.customer = p.get('c') || ''; S.product = p.get('p') || ''; S.tab = p.get('t') || 'cond'; S.recId = p.get('r') || '';
 }
 window.addEventListener('popstate', () => { readState(); render(); });
 
@@ -225,74 +240,106 @@ function showLogin() {
 
 async function load() {
   try {
-    const j = await api('/api/records');
+    const [j, cat] = await Promise.all([api('/api/records'), api('/api/catalog')]);
     RECORDS = j.records || [];
+    CATALOG = cat.customers ? cat : { customers: [] };
     $('#fab').classList.remove('hide');
     render();
   } catch (e) { if (e.message !== 'login') $('#app').innerHTML = `<div class="card empty">불러오기 실패: ${esc(e.message)}</div>`; }
 }
 
 // ───────── 데이터 묶기 ─────────
+// 제품 = 제품 목록(맵핑)에 있는 것 + 기록에만 있는 것
+const pidOf = p => p.code || p.name;
+const catCustomer = name => CATALOG.customers.find(c => c.name === name);
 function products() {
   const m = new Map();
+  for (const c of CATALOG.customers) for (const p of c.products) {
+    const id = pidOf(p);
+    m.set(c.name + '\u0001' + id, { customer: c.name, product: id, productName: p.code ? p.name : '', recs: [], inCatalog: true });
+  }
   for (const r of RECORDS) {
     const k = keyOf(r);
-    if (!m.has(k)) m.set(k, { customer: r.customer, product: r.product, productName: '', recs: [] });
+    if (!m.has(k)) m.set(k, { customer: r.customer, product: r.product, productName: '', recs: [], inCatalog: false });
     const p = m.get(k); p.recs.push(r);
     if (!p.productName && r.productName) p.productName = r.productName;
   }
   return [...m.values()];
 }
-const customers = () => [...new Set(RECORDS.map(r => r.customer))].sort((a, b) => a.localeCompare(b, 'ko'));
+const customers = () => [...new Set(CATALOG.customers.map(c => c.name).concat(RECORDS.map(r => r.customer)))].sort((a, b) => a.localeCompare(b, 'ko'));
 const sortRecs = rs => rs.slice().sort((a, b) => (b.date || '').localeCompare(a.date || '') || (b.createdAt || '').localeCompare(a.createdAt || ''));
-const hasParams = r => r.params && r.params.values && Object.keys(r.params.values).length;
+const lastDate = p => p.recs.length ? sortRecs(p.recs)[0].date || '' : '';
+const matchQ = (p, q) => !q || (p.customer + ' ' + p.product + ' ' + p.productName).toLowerCase().replace(/\s+/g, '').includes(q.toLowerCase().replace(/\s+/g, ''));
+const hasParams = r => (r.params && r.params.values && Object.keys(r.params.values).length) || (r.screens || []).some(s => s.items && s.items.length);
 
 // ───────── 화면 ─────────
 function render() {
   window.scrollTo({ top: 0 });
+  $('#fab').classList.toggle('hide', S.view === 'catalog');
+  if (S.view === 'catalog') return renderCatalog();
   if (S.customer && S.product) return renderProduct();
   renderHome();
 }
 
+function pitem(p) {
+  const rs = sortRecs(p.recs);
+  const machines = [...new Set(rs.map(r => r.machine).filter(Boolean))].sort().map(m => m + '호기').join(', ');
+  const nPh = rs.reduce((n, r) => n + (r.photos || []).length, 0);
+  return `<button class="pitem ${rs.length ? '' : 'none'}" data-c="${esc(p.customer)}" data-p="${esc(p.product)}">
+    <span class="muted">${esc(p.customer)}</span><b>${esc(p.product)}${p.productName ? ' · ' + esc(p.productName) : ''}</b>
+    <span class="muted">${rs.length ? `최근 ${esc(rs[0].date)} · ${esc(machines || '-')} · 기록 ${rs.length} · 사진 ${nPh}` : '아직 기록 없음'}</span></button>`;
+}
+
 function renderHome() {
   const cs = customers();
-  const ps = products().filter(p => (!S.customer || p.customer === S.customer) &&
-    (!S.q || (p.customer + ' ' + p.product + ' ' + p.productName).toLowerCase().includes(S.q.toLowerCase())));
-  ps.sort((a, b) => (sortRecs(b.recs)[0].date || '').localeCompare(sortRecs(a.recs)[0].date || ''));
+  const all = products();
+  let title, ps;
+  if (!S.customer && !S.q) {
+    title = '최근 작업한 제품';
+    ps = all.filter(p => p.recs.length).sort((a, b) => lastDate(b).localeCompare(lastDate(a))).slice(0, 12);
+  } else {
+    ps = all.filter(p => (!S.customer || p.customer === S.customer) && matchQ(p, S.q));
+    // 기록 있는 제품(최근순) 먼저, 그다음 목록에만 있는 제품(코드순)
+    ps.sort((a, b) => (!!b.recs.length - !!a.recs.length) || lastDate(b).localeCompare(lastDate(a)) || a.product.localeCompare(b.product, 'ko', { numeric: true }));
+    title = `${S.customer || '전체 거래처'} 제품 ${ps.length}개`;
+  }
   $('#app').innerHTML = `
     <div class="card">
       <label>1) 거래처 선택</label>
       <div class="chips" style="margin:6px 0 12px">
-        <button class="chip ${!S.customer ? 'on' : ''}" data-c="">전체</button>
         ${cs.map(c => `<button class="chip ${S.customer === c ? 'on' : ''}" data-c="${esc(c)}">${esc(c)}</button>`).join('')}
       </div>
-      <label>2) 제품 선택 <span class="muted">(제품코드·제품명 검색)</span>
-        <input class="search" id="q" value="${esc(S.q)}" placeholder="예: 20901526, 자석블럭"></label>
+      <label>2) 제품 찾기 <span class="muted">(제품코드·제품명 일부만 입력해도 됩니다)</span>
+        <input class="search" id="q" value="${esc(S.q)}" placeholder="예: 20901526, 자석블럭" autocomplete="off"></label>
     </div>
+    <h3>${esc(title)}</h3>
     <div class="plist">
-      ${ps.map(p => {
-        const rs = sortRecs(p.recs); const last = rs[0];
-        const machines = [...new Set(rs.map(r => r.machine).filter(Boolean))].sort().map(m => m + '호기').join(', ');
-        const nPh = rs.reduce((n, r) => n + (r.photos || []).length, 0);
-        return `<button class="pitem" data-c="${esc(p.customer)}" data-p="${esc(p.product)}">
-          <span class="muted">${esc(p.customer)}</span><b>${esc(p.product)}${p.productName ? ' · ' + esc(p.productName) : ''}</b>
-          <span class="muted">최근 ${esc(last.date)} · ${esc(machines || '-')} · 기록 ${rs.length} · 사진 ${nPh}</span></button>`;
-      }).join('') || '<div class="empty">기록이 없습니다. 오른쪽 아래 ＋ 버튼으로 추가하세요.</div>'}
-    </div>`;
-  document.querySelectorAll('.chip[data-c]').forEach(b => b.onclick = () => { S.customer = b.dataset.c; pushState(); renderHome(); });
+      ${ps.slice(0, 300).map(pitem).join('') || '<div class="empty">찾는 제품이 없습니다.</div>'}
+    </div>
+    ${ps.length > 300 ? '<p class="muted">300개까지만 보입니다. 검색어로 좁혀 주세요.</p>' : ''}`;
+  document.querySelectorAll('.chip[data-c]').forEach(b => b.onclick = () => { S.customer = S.customer === b.dataset.c ? '' : b.dataset.c; pushState(); renderHome(); });
   document.querySelectorAll('.pitem').forEach(b => b.onclick = () => { S.customer = b.dataset.c; S.product = b.dataset.p; S.tab = 'cond'; S.recId = ''; pushState(); render(); });
   const q = $('#q'); q.oninput = () => { S.q = q.value; const pos = q.selectionStart; renderHome(); const n = $('#q'); n.focus(); n.setSelectionRange(pos, pos); };
 }
 
 function renderProduct() {
   const rs = sortRecs(RECORDS.filter(r => r.customer === S.customer && r.product === S.product));
-  if (!rs.length) { S.product = ''; return renderHome(); }
+  const catItem = products().find(p => p.customer === S.customer && p.product === S.product);
+  if (!catItem) { S.product = ''; return renderHome(); }
+  const pName = catItem.productName || (rs.find(r => r.productName) || {}).productName || '';
+  if (!rs.length) {
+    $('#app').innerHTML = `<div class="card"><span class="muted">${esc(S.customer)}</span>
+      <h2>${esc(S.product)}${pName ? ' <span class="muted">' + esc(pName) + '</span>' : ''}</h2>
+      <p class="muted">아직 기록이 없습니다. 작업할 때 사진을 찍어 첫 기록을 남겨 주세요.</p>
+      <button class="btn" id="firstRec">＋ 첫 기록 추가</button></div>`;
+    $('#firstRec').onclick = () => openForm();
+    return;
+  }
   const condRecs = rs.filter(hasParams);
-  const pName = (rs.find(r => r.productName) || {}).productName || '';
   const lastOf = f => (rs.find(r => r[f]) || {})[f] || '-';
   const machines = [...new Set(rs.map(r => r.machine).filter(Boolean))].sort().map(m => m + '호기').join(', ');
   const photos = rs.flatMap(r => (r.photos || []).map(p => ({ ...p, rec: r })));
-  const sameCust = products().filter(p => p.customer === S.customer).sort((a, b) => a.product.localeCompare(b.product, 'ko'));
+  const sameCust = products().filter(p => p.customer === S.customer && p.recs.length).sort((a, b) => a.product.localeCompare(b.product, 'ko', { numeric: true }));
 
   $('#app').innerHTML = `
     <div class="card">
@@ -348,6 +395,7 @@ function condView(condRecs) {
       ${cur.notes ? `<div class="note">${esc(cur.notes)}</div>` : ''}
       ${prev ? `<p class="muted">노란 칸 = 이전 기록(${esc(prev.date)} ${esc(prev.machine)}호기)과 달라진 값, 아래 작은 글씨가 이전 값</p>` : ''}
       ${paramTables(TEMPLATES[tpl], cur.params.values, pv)}
+      ${screensView(cur)}
       ${condPhotos.length ? `<h3>이 기록의 사진 (${condPhotos.length})</h3>${thumbs(condPhotos.map(p => ({ ...p, rec: cur })))}` : ''}
       <div class="row" style="margin-top:12px">
         <button class="btn ghost" data-copy="${esc(cur.id)}">이 조건으로 새 기록 작성</button>
@@ -382,6 +430,17 @@ function paramTables(T, vals, pv, editable) {
   const extra = editable ? '' : Object.keys(vals).filter(k => !known.has(k)).map(k =>
     `<div class="single"><span>${esc(k)}</span><b>${esc(vals[k])}</b></div>`).join('');
   return grids + (singles || extra ? `<h3>시간·기타</h3><div class="singles">${singles}${extra}</div>` : '');
+}
+
+// 사진에서 읽은 화면 값 전체(양식 칸에 없는 값 포함)
+function screensView(rec, open) {
+  const ss = (rec.screens || []).filter(s => s.items && s.items.length);
+  if (!ss.length) return '';
+  const n = ss.reduce((a, s) => a + s.items.length, 0);
+  return `<details ${open ? 'open' : ''} style="margin-top:10px"><summary>사진에서 읽은 화면 값 전체 (${ss.length}개 화면, ${n}개 값)</summary>
+    ${ss.map(s => `<h3>${esc(s.title || '화면')}${s.photo ? ` <button class="chip" data-ph1="${esc(s.photo)}">사진</button>` : ''}</h3>
+      <table class="s">${s.items.map(i => `<tr><td>${esc(i.label)}</td><td class="muted">${esc(i.code)}</td><td class="v">${esc(i.value)} ${esc(i.unit)}</td></tr>`).join('')}</table>`).join('')}
+  </details>`;
 }
 
 function thumbs(list) {
@@ -432,10 +491,78 @@ function bindCommon(root) {
     try { await api('/api/records?id=' + encodeURIComponent(r.id), { method: 'DELETE' }); RECORDS = RECORDS.filter(x => x !== r); toast('삭제했습니다'); render(); }
     catch (e) { toast(e.message); }
   });
+  root.querySelectorAll('[data-ph1]').forEach(b => b.onclick = e => { e.preventDefault(); openViewer([b.dataset.ph1], 0); });
   root.querySelectorAll('.thumb').forEach(b => b.onclick = () => {
     const all = [...root.querySelectorAll('.thumb')].map(x => x.dataset.ph);
     openViewer(all, all.indexOf(b.dataset.ph));
   });
+}
+
+// ───────── 거래처별 제품 목록(맵핑) 관리 ─────────
+// 엑셀에서 [제품코드, 제품명] 두 열을 복사해 붙여 넣으면 한 줄에 한 제품으로 저장
+function parseLines(text) {
+  return text.split(/\r?\n/).map(l => l.trim()).filter(Boolean).map(l => {
+    const cols = (l.includes('\t') ? l.split('\t') : l.includes(',') ? l.split(',') : l.split(/\s{2,}/)).map(s => s.trim());
+    return { code: cols[0] || '', name: cols.slice(1).filter(Boolean).join(' '), note: '' };
+  }).filter(p => p.code || p.name);
+}
+const toLines = ps => ps.map(p => [p.code, p.name].filter(Boolean).join('\t')).join('\n');
+async function saveCatalog(next) {
+  const j = await api('/api/catalog', { method: 'POST', body: JSON.stringify(next) });
+  CATALOG = j; return j;
+}
+
+function renderCatalog() {
+  $('#fab').classList.add('hide');
+  const cs = customers();
+  const cur = S.customer;
+  const c = catCustomer(cur) || { name: cur, products: [] };
+  const recOnly = cur ? [...new Set(RECORDS.filter(r => r.customer === cur).map(r => r.product))]
+    .filter(id => !c.products.some(p => pidOf(p) === id)) : [];
+  $('#app').innerHTML = `
+    <div class="card">
+      <h2>거래처별 제품 목록</h2>
+      <p class="muted">여기에 넣은 제품만 거래처를 골랐을 때 목록에 나옵니다. 엑셀에서 <b>제품코드 · 제품명</b> 두 열을 복사해 붙여 넣으세요.</p>
+      <label>거래처</label>
+      <div class="chips" style="margin:6px 0 10px">
+        ${cs.map(x => `<button class="chip ${x === cur ? 'on' : ''}" data-cc="${esc(x)}">${esc(x)} <span class="muted">${(catCustomer(x) || { products: [] }).products.length}</span></button>`).join('')}
+      </div>
+      <div class="row"><label>새 거래처 추가<input id="newCust" placeholder="거래처 이름"></label><button class="btn ghost" id="addCust">추가</button></div>
+    </div>
+    ${cur ? `<div class="card">
+      <h3 style="margin-top:0">${esc(cur)} 제품 ${c.products.length}개</h3>
+      <textarea id="catText" style="width:100%;min-height:260px;font-family:monospace" placeholder="20901526&#9;케이스 상판&#10;20901527&#9;케이스 하판">${esc(toLines(c.products))}</textarea>
+      <p class="muted">한 줄에 한 제품: 제품코드 [탭] 제품명. 코드가 없으면 제품명만 적어도 됩니다.</p>
+      ${recOnly.length ? `<div class="aibox">기록은 있지만 목록에 없는 제품: ${recOnly.map(esc).join(', ')}
+        <button class="btn ghost" id="addRecOnly" style="margin-left:6px">목록에 넣기</button></div>` : ''}
+      <div class="row" style="margin-top:10px;justify-content:flex-end">
+        <button class="btn danger" id="delCust">이 거래처 목록 비우기</button>
+        <button class="btn" id="saveCat">저장</button>
+      </div>
+    </div>` : '<div class="card empty">거래처를 고르거나 새로 추가하세요.</div>'}
+    <button class="btn ghost" id="backHome">← 처음 화면</button>`;
+
+  document.querySelectorAll('[data-cc]').forEach(b => b.onclick = () => { S.customer = b.dataset.cc; pushState(); renderCatalog(); });
+  $('#backHome').onclick = () => { S.view = ''; S.customer = ''; pushState(); $('#fab').classList.remove('hide'); render(); };
+  $('#addCust').onclick = () => {
+    const n = $('#newCust').value.trim(); if (!n) return;
+    S.customer = n; pushState(); renderCatalog();
+  };
+  if (!cur) return;
+  const others = CATALOG.customers.filter(x => x.name !== cur);
+  $('#saveCat').onclick = async () => {
+    const ps = parseLines($('#catText').value);
+    try { await saveCatalog({ customers: others.concat(ps.length ? [{ name: cur, products: ps }] : []) }); toast(`${cur} 제품 ${ps.length}개 저장했습니다`); renderCatalog(); }
+    catch (e) { if (e.message !== 'login') toast('저장 실패: ' + e.message); }
+  };
+  $('#delCust').onclick = async () => {
+    if (!confirm(`${cur}의 제품 목록을 비울까요? (작업 기록은 지워지지 않습니다)`)) return;
+    try { await saveCatalog({ customers: others }); toast('비웠습니다'); renderCatalog(); } catch (e) { toast(e.message); }
+  };
+  const addBtn = $('#addRecOnly');
+  if (addBtn) addBtn.onclick = () => {
+    const t = $('#catText'); t.value = (t.value.trim() ? t.value.trim() + '\n' : '') + recOnly.join('\n'); toast('아래 저장을 눌러 주세요');
+  };
 }
 
 // ───────── 사진 크게 보기 ─────────
@@ -474,14 +601,19 @@ function openForm({ edit, copy } = {}) {
     notes: edit ? edit.notes || '' : '',
     photos: edit ? (edit.photos || []).map(p => ({ ...p })) : [],
     values: { ...((base.params && base.params.values) || {}) },
+    screens: edit ? (edit.screens || []).map(s => ({ ...s })) : [],
   };
   if (!edit && !copy && F.customer && F.product) {
     const last = sortRecs(RECORDS.filter(r => r.customer === F.customer && r.product === F.product))[0];
     if (last) { F.machine = last.machine || ''; F.material = last.material || ''; F.mold = last.mold || ''; F.productName = last.productName || ''; }
   }
-  const newPhotos = []; // {file, dataUrl, tag, w, h}
+  if (!F.productName) { const cp = products().find(p => p.customer === F.customer && p.product === F.product); if (cp) F.productName = cp.productName; }
+  const newPhotos = []; // 아직 안 올린 사진 {dataUrl, tag, w, h}
+  const aiKeys = new Set(); // 사진에서 읽어 채운 칸
+  const readDone = new Set(F.screens.map(s => s.photo)); // 이미 읽은 사진
+  let busy = null; // 진행 중인 사진 올리기/읽기
+  let closed = false;
   const m = $('#modal');
-  const allProducts = products();
 
   m.innerHTML = `<div class="card">
     <h2>${edit ? '기록 수정' : '기록 추가'}</h2>
@@ -492,12 +624,12 @@ function openForm({ edit, copy } = {}) {
     <label style="margin-top:8px">호기</label>
     <div class="chips" id="fMach" style="margin:4px 0 8px">${MACHINES.map(x => `<button type="button" class="chip ${F.machine === x ? 'on' : ''}" data-m="${x}">${x}호기</button>`).join('')}</div>
     <div class="row">
-      <label>거래처 *<input id="fCust" list="dlC" value="${esc(F.customer)}" placeholder="예: 리드앤플레이"></label>
-      <label>제품코드 / 제품 *<input id="fProd" list="dlP" value="${esc(F.product)}" placeholder="예: 20901526"></label>
-      <label>제품명 (선택)<input id="fPName" value="${esc(F.productName)}" placeholder="설명이 필요하면"></label>
+      <label>거래처 *<input id="fCust" list="dlC" value="${esc(F.customer)}" placeholder="예: 리드앤플레이" autocomplete="off"></label>
+      <label>제품코드 / 제품 *<input id="fProd" value="${esc(F.product)}" placeholder="코드나 이름 일부 입력" autocomplete="off"></label>
     </div>
+    <div class="pick" id="fPick"></div>
+    <label style="margin-top:8px">제품명 (선택)<input id="fPName" value="${esc(F.productName)}" placeholder="제품 목록에 있으면 자동으로 채워집니다"></label>
     <datalist id="dlC">${customers().map(c => `<option value="${esc(c)}">`).join('')}</datalist>
-    <datalist id="dlP"></datalist>
     <div class="row" style="margin-top:8px">
       <label>원료명<input id="fMat" list="dlM" value="${esc(F.material)}" placeholder="예: ABS LG121H"></label>
       <label>금형번호<input id="fMold" value="${esc(F.mold)}" placeholder="예: 2603"></label>
@@ -512,15 +644,17 @@ function openForm({ edit, copy } = {}) {
       <input type="file" id="fileCam" accept="image/*" capture="environment" multiple class="hide">
       <input type="file" id="fileAlb" accept="image/*" multiple class="hide">
     </div>
-    <p class="muted">사진마다 종류(작업조건·금형·제품·원료·불량·기타)를 골라 주세요.</p>
+    <p class="muted">설비 화면 사진은 '작업조건'으로 두면 자동으로 값을 읽어 아래 표에 채웁니다. 금형·제품·원료 사진은 종류를 바꿔 주세요.</p>
     <div class="newph" id="fPh"></div>
+    <div class="aibox hide" id="fAi"></div>
 
     <details id="fParDet" ${Object.keys(F.values).length ? 'open' : ''} style="margin-top:12px">
-      <summary>작업조건 수치 입력 (선택)</summary>
+      <summary>작업조건 수치 (사진에서 자동 입력 · 직접 수정 가능)</summary>
       <div class="row" style="margin:6px 0"><button type="button" class="btn ghost" id="fLoadPrev">이 제품의 최근 조건 불러오기</button>
         <button type="button" class="btn ghost" id="fClear">모두 지우기</button></div>
       <p class="muted" id="fTplName"></p>
       <div id="fPar"></div>
+      <div id="fScr"></div>
     </details>
 
     <div class="row" style="margin-top:16px;justify-content:flex-end">
@@ -531,19 +665,45 @@ function openForm({ edit, copy } = {}) {
   </div>`;
   m.classList.remove('hide');
   m.scrollTop = 0;
+  const status = t => { if (!closed) $('#fStatus').textContent = t; };
 
-  const fillProdList = () => {
-    const c = $('#fCust').value.trim();
-    $('#dlP').innerHTML = allProducts.filter(p => !c || p.customer === c).map(p => `<option value="${esc(p.product)}">${esc(p.productName)}</option>`).join('');
+  // ── 제품 고르기: 거래처의 제품 목록에서 검색 ──
+  const renderPick = () => {
+    const c = $('#fCust').value.trim(), q = $('#fProd').value.trim();
+    const list = products().filter(p => p.customer === c && matchQ(p, q));
+    const exact = list.find(p => p.product === q);
+    const box = $('#fPick');
+    if (!c || (exact && list.length === 1) || !list.length) { box.innerHTML = c && !list.length && q ? '<span class="muted">목록에 없는 제품입니다. 그대로 저장하면 새 제품으로 기록됩니다.</span>' : ''; return; }
+    list.sort((a, b) => (!!b.recs.length - !!a.recs.length) || a.product.localeCompare(b.product, 'ko', { numeric: true }));
+    box.innerHTML = list.slice(0, 30).map(p => `<button type="button" class="${p.product === q ? 'on' : ''}" data-pp="${esc(p.product)}" data-pn="${esc(p.productName)}">
+      <b>${esc(p.product)}</b>${p.productName ? ' · ' + esc(p.productName) : ''} <span class="muted">${p.recs.length ? '기록 ' + p.recs.length : ''}</span></button>`).join('') +
+      (list.length > 30 ? `<span class="muted">${list.length - 30}개 더 있음 — 더 입력해서 좁혀 주세요</span>` : '');
+    box.querySelectorAll('[data-pp]').forEach(b => b.onclick = () => {
+      $('#fProd').value = b.dataset.pp; if (b.dataset.pn) $('#fPName').value = b.dataset.pn;
+      const last = sortRecs(RECORDS.filter(r => r.customer === c && r.product === b.dataset.pp))[0];
+      if (last && !edit) {
+        if (!$('#fMat').value) $('#fMat').value = last.material || '';
+        if (!$('#fMold').value) $('#fMold').value = last.mold || '';
+      }
+      renderPick();
+    });
   };
-  fillProdList();
-  $('#fCust').oninput = fillProdList;
+  $('#fCust').oninput = renderPick;
+  $('#fProd').oninput = renderPick;
+  renderPick();
 
+  // ── 조건 표 ──
   const collectValues = () => { $('#fPar').querySelectorAll('input[data-k]').forEach(i => { F.values[i.dataset.k] = i.value.trim(); }); };
   const renderPar = () => {
     const tpl = templateFor(F.machine || '1');
-    $('#fTplName').textContent = F.machine ? `${F.machine}호기 → ${TEMPLATES[tpl].name}` : '호기를 먼저 고르면 해당 양식이 나옵니다 (지금은 1~3호기 양식)';
+    $('#fTplName').textContent = F.machine ? `${F.machine}호기 → ${TEMPLATES[tpl].name}. 파란 칸 = 사진에서 읽은 값(확인해 주세요)` : '호기를 먼저 고르면 해당 양식이 나옵니다 (지금은 1~3호기 양식)';
     $('#fPar').innerHTML = paramTables(TEMPLATES[tpl], F.values, null, true);
+    $('#fPar').querySelectorAll('input[data-k]').forEach(i => {
+      if (aiKeys.has(i.dataset.k)) i.classList.add('ai');
+      i.addEventListener('input', () => { aiKeys.delete(i.dataset.k); i.classList.remove('ai'); });
+    });
+    $('#fScr').innerHTML = screensView({ screens: F.screens }, false);
+    bindCommon($('#fScr'));
   };
   renderPar();
 
@@ -551,47 +711,138 @@ function openForm({ edit, copy } = {}) {
     collectValues(); F.machine = b.dataset.m;
     $('#fMach').querySelectorAll('.chip').forEach(x => x.classList.toggle('on', x === b));
     renderPar();
+    kick(); // 호기를 고르기 전에 넣은 사진도 이제 읽기
   });
   $('#fLoadPrev').onclick = () => {
+    collectValues();
     const c = $('#fCust').value.trim(), p = $('#fProd').value.trim(), tpl = templateFor(F.machine || '1');
-    const prev = sortRecs(RECORDS.filter(r => r.customer === c && r.product === p && hasParams(r) && (r.params.template || templateFor(r.machine)) === tpl && r.id !== F.id))[0];
+    const prev = sortRecs(RECORDS.filter(r => r.customer === c && r.product === p && r.params && Object.keys(r.params.values || {}).length && (r.params.template || templateFor(r.machine)) === tpl && r.id !== F.id))[0];
     if (!prev) return toast('같은 양식의 이전 조건이 없습니다');
-    F.values = { ...prev.params.values }; renderPar(); toast(`${prev.date} ${prev.machine}호기 조건을 불러왔습니다`);
+    // 사진에서 읽은 칸은 그대로 두고 빈 칸만 채움
+    for (const [k, v] of Object.entries(prev.params.values)) if (!F.values[k]) F.values[k] = v;
+    renderPar(); toast(`${prev.date} ${prev.machine}호기 조건으로 빈 칸을 채웠습니다`);
   };
-  $('#fClear').onclick = () => { F.values = {}; renderPar(); };
+  $('#fClear').onclick = () => { F.values = {}; aiKeys.clear(); renderPar(); };
 
+  // ── 사진 목록 ──
   const renderPh = () => {
+    if (closed) return;
     const box = $('#fPh');
-    box.innerHTML = F.photos.map((p, i) => phItem(photoUrl(p.path), p.tag, 'o' + i)).join('') +
-      newPhotos.map((p, i) => phItem(p.dataUrl, p.tag, 'n' + i)).join('');
+    const badge = p => p.path ? (readDone.has(p.path) ? '<span class="ocrtag">✔ 읽음</span>' : '') : '<span class="ocrtag">올리기 전</span>';
+    box.innerHTML = F.photos.map((p, i) => phItem(photoUrl(p.path), p.tag, 'o' + i, badge(p))).join('') +
+      newPhotos.map((p, i) => phItem(p.dataUrl, p.tag, 'n' + i, badge(p))).join('');
     box.querySelectorAll('select').forEach(s => s.onchange = () => {
-      const [t, i] = [s.dataset.id[0], +s.dataset.id.slice(1)]; (t === 'o' ? F.photos : newPhotos)[i].tag = s.value;
+      const [t, i] = [s.dataset.id[0], +s.dataset.id.slice(1)]; (t === 'o' ? F.photos : newPhotos)[i].tag = s.value; kick();
     });
     box.querySelectorAll('.x').forEach(b => b.onclick = () => {
-      const [t, i] = [b.dataset.id[0], +b.dataset.id.slice(1)]; (t === 'o' ? F.photos : newPhotos).splice(i, 1); renderPh();
+      const [t, i] = [b.dataset.id[0], +b.dataset.id.slice(1)];
+      const arr = t === 'o' ? F.photos : newPhotos; const [rm] = arr.splice(i, 1);
+      if (rm && rm.path) F.screens = F.screens.filter(s => s.photo !== rm.path);
+      renderPh(); renderPar();
     });
   };
-  const phItem = (src, tag, id) => `<div class="it"><img src="${src}"><select data-id="${id}">${PHOTO_TAGS.map(t => `<option ${t === tag ? 'selected' : ''}>${t}</option>`).join('')}</select>
+  const phItem = (src, tag, id, badge) => `<div class="it"><img src="${src}">${badge}<select data-id="${id}">${PHOTO_TAGS.map(t => `<option ${t === tag ? 'selected' : ''}>${t}</option>`).join('')}</select>
     <button type="button" class="btn danger x" data-id="${id}">빼기</button></div>`;
   renderPh();
 
+  // ── 사진 올리기 + 화면 값 읽기 (자동) ──
+  const showAi = html => { if (closed) return; const b = $('#fAi'); b.classList.toggle('hide', !html); b.innerHTML = html || ''; };
+  async function uploadPending() {
+    while (newPhotos.length) {
+      const p = newPhotos[0];
+      status(`사진 올리는 중… (남은 ${newPhotos.length}장)`);
+      const j = await api('/api/photo', { method: 'POST', body: JSON.stringify({ data: p.dataUrl }) });
+      newPhotos.shift();
+      F.photos.push({ path: j.path, tag: p.tag, w: p.w, h: p.h, fresh: true });
+      renderPh();
+    }
+  }
+  async function readPhotos(paths) {
+    const tpl = templateFor(F.machine);
+    const keys = templateKeys(tpl);
+    let done = 0, filled = 0, failed = 0;
+    const queue = paths.slice();
+    showAi(`🤖 사진에서 작업조건 읽는 중… 0 / ${paths.length}장 (장당 10~30초)`);
+    const worker = async () => {
+      while (queue.length) {
+        const path = queue.shift();
+        try {
+          const j = await api('/api/ocr', { method: 'POST', body: JSON.stringify({ path, machine: F.machine, keys }) });
+          const r = j.result;
+          readDone.add(path);
+          F.screens = F.screens.filter(s => s.photo !== path).concat([{ photo: path, title: r.screen_title, time: r.screen_time, items: r.items }]);
+          collectValues();
+          for (const { key, value } of r.mapped) { F.values[key] = value; aiKeys.add(key); filled++; }
+          if (r.mold_number && !$('#fMold').value.trim()) $('#fMold').value = r.mold_number;
+          const ph = F.photos.find(p => p.path === path);
+          if (ph && r.photo_kind && r.photo_kind !== '조건화면' && PHOTO_TAGS.includes(r.photo_kind)) ph.tag = r.photo_kind;
+          if (!closed) { renderPar(); renderPh(); }
+        } catch (e) {
+          if (e.message === 'login') throw e;
+          failed++; readDone.add(path); // 같은 사진을 계속 다시 시도하지 않음
+          if (/키/.test(e.message)) { queue.length = 0; showAi('⚠ ' + esc(e.message)); return; }
+        }
+        done++;
+        showAi(`🤖 사진에서 작업조건 읽는 중… ${done} / ${paths.length}장`);
+      }
+    };
+    await Promise.all([worker(), worker(), worker()]);
+    if (!closed && !$('#fAi').textContent.startsWith('⚠')) {
+      $('#fParDet').open = true;
+      showAi(`🤖 ${paths.length}장 읽음 · 양식 칸 ${filled}개 채움${failed ? ` · ${failed}장 실패` : ''}. 파란 칸이 사진에서 읽은 값입니다. 틀린 값은 고쳐 주세요.`);
+    }
+  }
+  // 새로 넣은 사진을 올리고, '작업조건' 사진 중 안 읽은 것을 읽음. 이미 진행 중이면 끝난 뒤 한 번 더 확인.
+  function kick() {
+    if (busy) { busy.job.again = true; return busy; }
+    const job = { again: false };
+    const run = (async () => {
+      try {
+        do {
+          job.again = false;
+          await uploadPending();
+          if (!F.machine) { if (F.photos.some(p => p.tag === '작업조건' && !readDone.has(p.path))) showAi('호기를 고르면 사진에서 작업조건을 읽습니다.'); continue; }
+          const todo = F.photos.filter(p => p.fresh && p.tag === '작업조건' && !readDone.has(p.path)).map(p => p.path);
+          if (todo.length) await readPhotos(todo);
+        } while (job.again);
+      } finally { busy = null; status(''); }
+    })();
+    run.job = job;
+    busy = run;
+    run.catch(e => { if (e.message !== 'login') toast('사진 처리 실패: ' + e.message, 4000); });
+    return run;
+  }
+  // 예전 기록의 사진은 자동으로 읽지 않고 버튼으로
+  const oldUnread = () => F.photos.filter(p => !p.fresh && p.tag === '작업조건' && !readDone.has(p.path));
+  if (edit && oldUnread().length) {
+    showAi(`이 기록의 '작업조건' 사진 ${oldUnread().length}장은 아직 읽지 않았습니다. <button type="button" class="btn ghost" id="fReadOld">사진에서 값 읽기</button>`);
+    $('#fReadOld').onclick = () => {
+      if (!F.machine) return toast('호기를 먼저 골라 주세요');
+      oldUnread().forEach(p => { p.fresh = true; });
+      kick();
+    };
+  }
+
   const addFiles = async files => {
-    $('#fStatus').textContent = '사진 줄이는 중…';
+    status('사진 줄이는 중…');
     for (const f of files) {
-      try { const r = await shrink(f); newPhotos.push({ ...r, tag: newPhotos.length || F.photos.length ? (newPhotos.at(-1)?.tag || '작업조건') : '작업조건' }); }
+      try { const r = await shrink(f); newPhotos.push({ ...r, tag: newPhotos.at(-1)?.tag || F.photos.at(-1)?.tag || '작업조건' }); }
       catch { toast('사진을 읽지 못했습니다: ' + f.name); }
     }
-    $('#fStatus').textContent = ''; renderPh();
+    status(''); renderPh(); kick();
   };
   $('#fCam').onclick = () => $('#fileCam').click();
   $('#fAlb').onclick = () => $('#fileAlb').click();
   $('#fileCam').onchange = e => { addFiles([...e.target.files]); e.target.value = ''; };
   $('#fileAlb').onchange = e => { addFiles([...e.target.files]); e.target.value = ''; };
 
-  $('#fCancel').onclick = () => { if (newPhotos.length && !confirm('저장하지 않은 사진이 있습니다. 닫을까요?')) return; m.classList.add('hide'); m.innerHTML = ''; };
+  const close = () => { closed = true; m.classList.add('hide'); m.innerHTML = ''; };
+  $('#fCancel').onclick = () => {
+    if ((newPhotos.length || F.photos.some(p => p.fresh)) && !confirm('저장하지 않은 사진이 있습니다. 닫을까요?')) return;
+    close();
+  };
 
   $('#fSave').onclick = async () => {
-    collectValues();
     const rec = {
       id: F.id || undefined,
       date: $('#fDate').value, machine: F.machine, customer: $('#fCust').value.trim(), product: $('#fProd').value.trim(),
@@ -600,30 +851,25 @@ function openForm({ edit, copy } = {}) {
     };
     if (!rec.customer || !rec.product) return toast('거래처와 제품코드를 입력하세요');
     if (!rec.machine && !confirm('호기를 고르지 않았습니다. 그대로 저장할까요?')) return;
-    const vals = Object.fromEntries(Object.entries(F.values).filter(([, v]) => v !== ''));
-    rec.params = { template: templateFor(rec.machine || '1'), values: vals };
     localStorageSet('worker', rec.worker);
     const btn = $('#fSave'); btn.disabled = true;
     try {
-      const photos = F.photos.slice();
-      for (let i = 0; i < newPhotos.length; i++) {
-        $('#fStatus').textContent = `사진 올리는 중 ${i + 1} / ${newPhotos.length}`;
-        const p = newPhotos[i];
-        const j = await api('/api/photo', { method: 'POST', body: JSON.stringify({ data: p.dataUrl }) });
-        photos.push({ path: j.path, tag: p.tag, w: p.w, h: p.h });
-        p.dataUrl = photoUrl(j.path); // 실패 후 다시 저장 시 중복 업로드 방지
-        F.photos.push(photos.at(-1)); newPhotos.splice(i, 1); i--;
-      }
-      rec.photos = photos;
-      $('#fStatus').textContent = '저장 중…';
+      if (busy || newPhotos.length) { status('사진 처리가 끝나면 저장합니다…'); await (busy || kick()); }
+      if (busy) await busy;
+      collectValues();
+      const vals = Object.fromEntries(Object.entries(F.values).filter(([, v]) => v !== ''));
+      rec.params = { template: templateFor(rec.machine || '1'), values: vals };
+      rec.photos = F.photos.map(({ fresh, ...p }) => p);
+      rec.screens = F.screens;
+      status('저장 중…');
       const j = await api('/api/records', { method: 'POST', body: JSON.stringify(rec) });
       RECORDS = RECORDS.filter(r => r.id !== j.record.id).concat([j.record]);
-      m.classList.add('hide'); m.innerHTML = '';
-      S.customer = j.record.customer; S.product = j.record.product;
+      close();
+      S.view = ''; S.customer = j.record.customer; S.product = j.record.product;
       S.tab = hasParams(j.record) ? 'cond' : 'log'; S.recId = j.record.id;
       pushState(); render(); toast('저장했습니다');
     } catch (e) {
-      $('#fStatus').textContent = ''; btn.disabled = false;
+      status(''); btn.disabled = false;
       if (e.message !== 'login') toast('저장 실패: ' + e.message + ' (다시 저장을 눌러 주세요)', 4000);
     }
   };
@@ -647,7 +893,8 @@ function localStorageGet(k) { try { return localStorage.getItem('wc_' + k) || ''
 function localStorageSet(k, v) { try { localStorage.setItem('wc_' + k, v); } catch {} }
 
 $('#fab').onclick = () => openForm();
-$('#home').onclick = () => { S.customer = ''; S.product = ''; S.recId = ''; S.tab = 'cond'; pushState(); render(); };
+$('#home').onclick = () => { S.view = ''; S.customer = ''; S.product = ''; S.recId = ''; S.tab = 'cond'; S.q = ''; $('#fab').classList.remove('hide'); pushState(); render(); };
+$('#catBtn').onclick = () => { S.view = 'catalog'; S.product = ''; pushState(); render(); };
 $('#reload').onclick = () => load();
 readState();
 load();

@@ -15,6 +15,15 @@ http.createServer(async (req, res) => {
   try {
     if (url.pathname.startsWith('/api/')) {
       const name = url.pathname.slice(5).replace(/[^a-z]/g, '');
+      // 키 없이 화면 흐름을 확인할 때: OCR_MOCK=1 이면 가짜 판독 결과
+      if (name === 'ocr' && process.env.OCR_MOCK) {
+        const chunks = []; for await (const c of req) chunks.push(c);
+        const { keys = [] } = JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}');
+        await new Promise(r => setTimeout(r, 800));
+        return res.json({ result: { photo_kind: '조건화면', screen_title: '모의 화면', screen_time: '', mold_number: '2603',
+          items: [{ label: '1차후진속도', code: 'V6', value: '30', unit: '%' }, { label: '금형후진행정', code: 'A', value: '408.0', unit: 'mm' }],
+          mapped: keys.slice(0, 3).map((key, i) => ({ key, value: String(11 + i) })) } });
+      }
       const mod = await import(pathToFileURL(path.join(root, 'api', name + '.js')).href);
       req.query = Object.fromEntries(url.searchParams);
       const chunks = []; for await (const c of req) chunks.push(c);

@@ -43,6 +43,15 @@ function clean(input, existing) {
       .filter(p => p && typeof p.path === 'string' && /^photos\/[A-Za-z0-9_.-]+$/.test(p.path))
       .map(p => ({ path: p.path, tag: String(p.tag || '').slice(0, 20), w: p.w | 0, h: p.h | 0 }));
   }
+  // 사진에서 읽은 화면 값(양식 칸에 없는 값까지 모두 보관)
+  if (Array.isArray(input.screens)) {
+    const s60 = v => String(v ?? '').slice(0, 60);
+    r.screens = input.screens.slice(0, 60).map(s => ({
+      photo: typeof s.photo === 'string' && /^photos\/[A-Za-z0-9_.-]+$/.test(s.photo) ? s.photo : '',
+      title: s60(s.title), time: s60(s.time),
+      items: (Array.isArray(s.items) ? s.items : []).slice(0, 200).map(i => ({ label: s60(i.label), code: s60(i.code), value: s60(i.value), unit: s60(i.unit) })),
+    }));
+  }
   return r;
 }
 
