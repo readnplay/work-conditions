@@ -291,6 +291,15 @@ function pitem(p) {
     <span class="muted">${rs.length ? `최근 ${esc(rs[0].date)} · ${esc(machines || '-')} · 기록 ${rs.length} · 사진 ${nPh}` : '아직 기록 없음'}</span></button>`;
 }
 
+function custInfoCard(name) {
+  const i = (catCustomer(name) || {}).info;
+  if (!i || !(i.rep || i.phone || i.memo)) return '';
+  return `<div class="card"><div class="kv">
+    <div><span>대표</span>${esc(i.rep || '-')}</div>
+    <div><span>연락처</span>${i.phone ? `<a href="tel:${esc(i.phone.replace(/[^0-9+]/g, ''))}">${esc(i.phone)}</a>` : '-'}</div>
+  </div>${i.memo ? `<div class="note">${esc(i.memo)}</div>` : ''}</div>`;
+}
+
 function renderHome() {
   const cs = customers();
   const all = products();
@@ -313,6 +322,7 @@ function renderHome() {
       <label>2) 제품 찾기 <span class="muted">(제품코드·제품명 일부만 입력해도 됩니다)</span>
         <input class="search" id="q" value="${esc(S.q)}" placeholder="예: 20901526, 자석블럭" autocomplete="off"></label>
     </div>
+    ${custInfoCard(S.customer)}
     <h3>${esc(title)}</h3>
     <div class="plist">
       ${ps.slice(0, 300).map(pitem).join('') || '<div class="empty">찾는 제품이 없습니다.</div>'}
@@ -531,7 +541,13 @@ function renderCatalog() {
       <div class="row"><label>새 거래처 추가<input id="newCust" placeholder="거래처 이름"></label><button class="btn ghost" id="addCust">추가</button></div>
     </div>
     ${cur ? `<div class="card">
-      <h3 style="margin-top:0">${esc(cur)} 제품 ${c.products.length}개</h3>
+      <h3 style="margin-top:0">${esc(cur)} 거래처 정보</h3>
+      <div class="row">
+        <label>대표<input id="ciRep" value="${esc((c.info || {}).rep)}"></label>
+        <label>연락처<input id="ciPhone" inputmode="tel" value="${esc((c.info || {}).phone)}"></label>
+      </div>
+      <label style="margin-top:8px">메모<textarea id="ciMemo">${esc((c.info || {}).memo)}</textarea></label>
+      <h3>${esc(cur)} 제품 ${c.products.length}개</h3>
       <textarea id="catText" style="width:100%;min-height:260px;font-family:monospace" placeholder="20901526&#9;케이스 상판&#10;20901527&#9;케이스 하판">${esc(toLines(c.products))}</textarea>
       <p class="muted">한 줄에 한 제품: 제품코드 [탭] 제품명. 코드가 없으면 제품명만 적어도 됩니다.</p>
       ${recOnly.length ? `<div class="aibox">기록은 있지만 목록에 없는 제품: ${recOnly.map(esc).join(', ')}
@@ -551,14 +567,15 @@ function renderCatalog() {
   };
   if (!cur) return;
   const others = CATALOG.customers.filter(x => x.name !== cur);
+  const readInfo = () => ({ rep: $('#ciRep').value, phone: $('#ciPhone').value, memo: $('#ciMemo').value });
   $('#saveCat').onclick = async () => {
     const ps = parseLines($('#catText').value);
-    try { await saveCatalog({ customers: others.concat(ps.length ? [{ name: cur, products: ps }] : []) }); toast(`${cur} 제품 ${ps.length}개 저장했습니다`); renderCatalog(); }
+    try { await saveCatalog({ customers: others.concat([{ name: cur, info: readInfo(), products: ps }]) }); toast(`${cur} 제품 ${ps.length}개 저장했습니다`); renderCatalog(); }
     catch (e) { if (e.message !== 'login') toast('저장 실패: ' + e.message); }
   };
   $('#delCust').onclick = async () => {
     if (!confirm(`${cur}의 제품 목록을 비울까요? (작업 기록은 지워지지 않습니다)`)) return;
-    try { await saveCatalog({ customers: others }); toast('비웠습니다'); renderCatalog(); } catch (e) { toast(e.message); }
+    try { await saveCatalog({ customers: others.concat([{ name: cur, info: readInfo(), products: [] }]) }); toast('비웠습니다'); renderCatalog(); } catch (e) { toast(e.message); }
   };
   const addBtn = $('#addRecOnly');
   if (addBtn) addBtn.onclick = () => {

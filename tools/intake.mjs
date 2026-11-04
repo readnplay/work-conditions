@@ -5,6 +5,7 @@
 //   { customer*, product*(코드 또는 이름), productName, machine, date, material, mold, worker, notes,
 //     photos:[로컬 파일], photoPaths:[이미 올린 photos/...], tag:'작업조건' }
 //   기록 내용(원료·금형·특이사항·사진)이 없으면 제품 목록에만 넣음
+//   거래처 정보만: { customer*, info:{rep, phone, memo} } (준 항목만 바꿈, memo는 기존 메모 뒤에 붙임)
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -37,6 +38,15 @@ const entries = JSON.parse(fs.readFileSync(file, 'utf8').replace(/^﻿/, ''));
 let catalogChanged = false;
 
 for (const e of entries) {
+  if (e.customer && e.info) {
+    let c = catalog.customers.find(x => x.name === e.customer);
+    if (!c) { c = { name: e.customer, products: [] }; catalog.customers.push(c); }
+    const old = c.info || {};
+    c.info = { rep: e.info.rep || old.rep || '', phone: e.info.phone || old.phone || '', memo: [old.memo, e.info.memo].filter(Boolean).join(' / ') };
+    catalogChanged = true;
+    console.log('거래처 정보:', e.customer, JSON.stringify(c.info));
+    if (!e.product) continue;
+  }
   if (!e.customer || !e.product) { console.log('건너뜀(거래처/제품 없음):', JSON.stringify(e)); continue; }
   const tag = e.tag || '작업조건';
   const stored = (e.photoPaths || []).map(p => ({ path: p, tag }));

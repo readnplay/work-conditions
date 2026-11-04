@@ -18,7 +18,8 @@ function clean(input) {
       seen.add(id);
       products.push({ code, name: pname, note: s(p.note, 200) });
     }
-    customers.push({ name, products });
+    const i = c.info || {};
+    customers.push({ name, info: { rep: s(i.rep, 60), phone: s(i.phone, 60), memo: s(i.memo, 2000) }, products });
   }
   return { customers, updatedAt: new Date().toISOString() };
 }
