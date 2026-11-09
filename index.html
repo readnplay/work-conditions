@@ -440,8 +440,9 @@ function labelView(body, rs) {
   const tag = {
     customer: (c.label && c.label.title) || c.name, code: p.lcode ?? p.code, name: p.lname ?? p.name,
     mold: p.mold || (rs.find(r => r.mold) || {}).mold || '', line: [...new Set(rs.map(r => r.machine).filter(Boolean))].sort().map(m => m + '호기').join(', '),
-    material: p.material, grade: p.grade, color: p.color, weight: p.weight || '', note: p.pack ? '포장 ' + p.pack : '',
-    cond: GaonLabel.simpleCond(condRec ? condRec.params.template || templateFor(condRec.machine) : templateFor((rs.find(r => r.machine) || {}).machine || '4'), condRec ? condRec.params.values : {}),
+    material: p.material, grade: p.grade, color: p.color, weight: p.weight || '',
+    note: [p.pack ? '포장 ' + p.pack : '', ((rs.find(r => r.notes) || {}).notes || '').split('\n')[0]].filter(Boolean).join(' · '),
+    template: condRec ? condRec.params.template || templateFor(condRec.machine) : 'B', values: condRec ? condRec.params.values : null,
     condDate: condRec ? condRec.date + ' ' + (condRec.machine || '') + '호기' : '', photo: prodPhoto ? photoUrl(prodPhoto.path) : '',
   };
   const mbox = $('#mtPrev'); const msc = (mbox.clientWidth || 340) / 794;

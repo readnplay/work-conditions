@@ -69,65 +69,117 @@
   const MOLD_CSS = `
 .mt-page{width:210mm;height:297mm;padding:12mm 5mm;box-sizing:border-box;display:flex;flex-direction:column;justify-content:space-between;page-break-after:always;break-after:page;background:#fff;color:#000}
 .mt-page:last-child{page-break-after:auto;break-after:auto}
-.mt{width:200mm;height:70mm;box-sizing:border-box;border:1.5px solid #000;outline:1px dashed #999;outline-offset:2.5mm;display:grid;grid-template-columns:46mm 1fr;font-family:"Malgun Gothic","맑은 고딕","Apple SD Gothic Neo",sans-serif;overflow:hidden}
-.mt-ph{border-right:1.2px solid #000;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2mm;gap:2mm}
-.mt-ph img.p{max-width:42mm;max-height:44mm;object-fit:contain}
-.mt-ph .np{width:42mm;height:40mm;border:1px dashed #999;display:flex;align-items:center;justify-content:center;color:#888;font-size:9pt}
-.mt-ph img.l{max-width:30mm;max-height:13mm}
+.mt{width:200mm;height:70mm;box-sizing:border-box;border:1.5px solid #000;outline:1px dashed #999;outline-offset:2.5mm;display:grid;grid-template-columns:36mm 1fr;font-family:"Malgun Gothic","맑은 고딕","Apple SD Gothic Neo",sans-serif;overflow:hidden;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.mt-ph{border-right:1.2px solid #000;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:1.5mm;gap:2mm}
+.mt-ph img.p{max-width:33mm;max-height:42mm;object-fit:contain}
+.mt-ph .np{width:32mm;height:30mm;border:1px dashed #bbb;display:flex;align-items:center;justify-content:center;color:#999;font-size:8pt}
+.mt-ph img.l{max-width:26mm;max-height:11mm}
 .mt-b{display:flex;flex-direction:column;min-width:0}
-.mt-h{display:flex;align-items:baseline;gap:3mm;padding:1.5mm 3mm;border-bottom:1.2px solid #000;background:#eee;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-.mt-h .c{font-size:17pt;font-weight:800;white-space:nowrap}
-.mt-h .n{font-size:15pt;font-weight:800;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.mt table{border-collapse:collapse;width:100%;table-layout:fixed;font-size:9.5pt}
-.mt td{border-bottom:1px dotted #666;padding:0.6mm 1.5mm;height:5.6mm;vertical-align:middle;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
-.mt td.k{width:17mm;font-weight:700;background:#f6f6f6;border-right:1px dotted #666;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-.mt td.v{font-weight:700}
-.mt .cond{display:grid;grid-template-columns:repeat(6,1fr);border-top:1.2px solid #000;flex:1}
-.mt .cond div{border-right:1px dotted #666;border-bottom:1px dotted #666;padding:0.4mm 1mm;font-size:7.5pt;line-height:1.15;overflow:hidden}
-.mt .cond div b{display:block;font-size:10pt;min-height:4mm}
-.mt .nocond{display:flex;flex-direction:column}
-.mt .nocond .msg{flex:1;border:0;font-size:9pt;color:#555;display:flex;align-items:center;padding:0 2mm}
-.mt .ct{grid-column:1/-1;font-size:8pt!important;font-weight:700;background:#f6f6f6;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.mt-h{display:flex;align-items:baseline;gap:3mm;padding:0.8mm 2.5mm;border-bottom:1.2px solid #000;background:#eee}
+.mt-h .c{font-size:12pt;font-weight:800;white-space:nowrap}
+.mt-h .n{font-size:11.5pt;font-weight:800;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mt table.i{border-collapse:collapse;width:100%;table-layout:fixed;font-size:7.8pt}
+.mt table.i td{border-bottom:1px dotted #777;padding:0.2mm 1.2mm;height:3.8mm;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.mt table.i td.k{width:13mm;font-weight:700;background:#f3f3f3;border-right:1px dotted #777}
+.mt table.i td.v{font-weight:700;border-right:1px dotted #777}
+.mt .cd{border-top:1.2px solid #000;flex:1;display:flex;flex-direction:column;padding:0.6mm 1mm;gap:0.7mm;min-height:0}
+.mt .cd .ttl{font-size:7pt;font-weight:800}
+.mt .cd .rw{display:flex;gap:1.2mm;align-items:flex-start}
+.mt table.m{border-collapse:collapse;font-size:6.6pt;line-height:1}
+.mt table.m th,.mt table.m td{border:0.6px solid #888;padding:0.15mm 0.6mm;text-align:center;white-space:nowrap;height:2.85mm}
+.mt table.m th{background:#ececec;font-weight:700}
+.mt table.m caption{caption-side:top;text-align:left;font-weight:800;font-size:6.8pt;padding-bottom:0.2mm}
+.mt table.m td{font-weight:700;min-width:5.5mm}
+.mt .sg{display:flex;flex-wrap:wrap;gap:0.6mm 0.8mm;font-size:6.4pt;margin-top:1mm}
+.mt .col{display:flex;flex-direction:column;min-width:0;flex:1}
+.mt .sg span{border:0.6px solid #888;padding:0.2mm 0.8mm;white-space:nowrap}
+.mt .sg b{font-weight:800}
+.mt .msg{font-size:8.5pt;color:#555;flex:1;display:flex;align-items:center}
 @media print{@page{size:A4 portrait;margin:0}}`;
 
-  // 간단 작업조건: 작업조건표에 기록된 값 중 많이 보는 것만(양식 A: 1~3호기, B: 4~6호기). 기록 없는 칸은 넣지 않음(손으로 쓰는 칸 없음)
-  const COND = {
-    A: [['노즐 온도', '노즐1'], ['실2', '실2'], ['실3', '실3'], ['실4', '실4'], ['사출속도1', '사출속도1'], ['사출압력', '사출압력'],
-        ['보압1', '보압1'], ['보압시간', '보압시간'], ['냉각시간', '냉각시간'], ['계량', '계량스트로크'], ['배압1', '배압1'], ['사이클', '']],
-    B: [['노즐 NZ', '히터 NZ(℃)'], ['히터1', '히터1(℃)'], ['히터2', '히터2(℃)'], ['히터3', '히터3(℃)'], ['사출 SP1', '사출 SP1(%)'], ['사출 PR1', '사출 PR1(bar)'],
-        ['보압 PR1H', '보압 PR1H(bar)'], ['보압 시간', '보압 TIME1H(s)'], ['냉각시간', '냉각시간(s)'], ['계량 POS', '계량 POS4C(mm)'], ['배압 BP1C', '계량 BP1C(%)'], ['사이클', '사이클시간(s)']],
+  // 작업조건 표: 작업조건표에 기록된 값. 키 이름은 앱 양식(index.html TEMPLATES)과 같음. 값 없는 표는 넣지 않음(손으로 쓰는 칸 없음)
+  const R = (a, b) => { const r = []; for (let i = a; a <= b ? i <= b : i >= b; i += a <= b ? 1 : -1) r.push(i); return r; };
+  const EJ = ['전진1', '전진2', '후진2', '후진1'];
+  const DETAIL = {
+    B: [
+      [
+        ['사출', R(4, 1), [['SP%', R(4, 1).map(i => `사출 SP${i}(%)`)], ['PRbar', R(4, 1).map(i => `사출 PR${i}(bar)`)], ['POS', R(4, 1).map(i => `사출 POS${i}(mm)`)]]],
+        ['보압', ['3H', '2H', '1H'], [['SP%', [3, 2, 1].map(i => `보압 SP${i}H(%)`)], ['PRbar', [3, 2, 1].map(i => `보압 PR${i}H(bar)`)], ['TIME', [3, 2, 1].map(i => `보압 TIME${i}H(s)`)]]],
+        ['계량', ['1C', '2C', '3C', '4C'], [['SP%', R(1, 4).map(i => `계량 SP${i}C(%)`)], ['PRbar', R(1, 4).map(i => `계량 PR${i}C(bar)`)], ['배압%', R(1, 4).map(i => `계량 BP${i}C(%)`)], ['POS', R(1, 4).map(i => `계량 POS${i}C(mm)`)]]],
+        ['온도 ℃', ['EN', 'NZ', '1', '2', '3', '4'], [['설정', ['히터 EN(℃)', '히터 NZ(℃)', '히터1(℃)', '히터2(℃)', '히터3(℃)', '히터4(℃)']]]],
+      ],
+      [
+        ['형폐', R(1, 5), [['SP%', R(1, 5).map(i => `형폐 SP${i}(%)`)], ['PRbar', R(1, 5).map(i => `형폐 PR${i}(bar)`)], ['POS', R(1, 4).map(i => `형폐 POS${i}(mm)`).concat([''])]]],
+        ['형개', R(5, 1), [['SP%', R(5, 1).map(i => `형개 SP${i}(%)`)], ['PRbar', R(5, 1).map(i => `형개 PR${i}(bar)`)], ['POS', R(5, 1).map(i => `형개 POS${i}(mm)`)]]],
+        ['에젝터', ['전1', '전2', '후2', '후1'], [['SP%', EJ.map(k => `에젝터${k} SP(%)`)], ['PRbar', EJ.map(k => `에젝터${k} PR(bar)`)], ['POS', EJ.map(k => `에젝터${k} POS(mm)`)]]],
+      ],
+    ],
+    A: [
+      [
+        ['사출속도 mm/s', R(1, 5), [['1~5', R(1, 5).map(i => '사출속도' + i)], ['6~10', R(6, 10).map(i => '사출속도' + i)]]],
+        ['보압 bar', R(1, 5), [['1~5', R(1, 5).map(i => '보압' + i)], ['6~10', R(6, 10).map(i => '보압' + i)]]],
+        ['계량', R(1, 5), [['회전%', R(1, 5).map(i => '스크류회전' + i)], ['배압bar', R(1, 5).map(i => '배압' + i)]]],
+        ['온도 ℃', ['노즐1', '실2', '실3', '실4', '실5'], [['설정', ['노즐1', '실2', '실3', '실4', '실5']]]],
+      ],
+    ],
   };
-  function simpleCond(template, values = {}) {
-    return (COND[template] || COND.B).map(([label, key]) => [label, key ? values[key] || '' : '']).filter(([, v]) => v !== '');
+  const SINGLES = {
+    B: [['사출시간', '사출시간(s)', 's'], ['냉각', '냉각시간(s)', 's'], ['사이클', '사이클시간(s)', 's'], ['형폐시간', '형폐시간(s)', 's'], ['형개시간', '형개시간(s)', 's'],
+        ['석백 POS', '계량 POS2S(mm)', 'mm'], ['석백 SP', '계량 SP2S(%)', '%'], ['노즐전진 SP/PR', ['노즐전진 SP(%)', '노즐전진 PR(bar)'], ''], ['에젝터 횟수', '에젝터횟수', '회']],
+    A: [['사출압력', '사출압력', 'bar'], ['보압시간', '보압시간', 's'], ['냉각', '냉각시간', 's'], ['계량스트로크', '계량스트로크', 'mm']],
+  };
+  function condHTML(template, values = {}) {
+    const v = k => (k && values[k]) || '';
+    const tables = row => row.map(([title, cols, body]) => {
+      if (!body.some(([, keys]) => keys.some(v))) return '';
+      return `<table class="m"><caption>${esc(title)}</caption><tr><th></th>${cols.map(c => `<th>${esc(c)}</th>`).join('')}</tr>` +
+        body.map(([lb, keys]) => `<tr><th>${esc(lb)}</th>${keys.map(k => `<td>${esc(v(k))}</td>`).join('')}</tr>`).join('') + '</table>';
+    }).join('');
+    // 시간 등 낱개 값: 앞쪽은 첫 줄 오른쪽 표 아래, 나머지는 마지막 줄 오른쪽
+    const chips = (SINGLES[template] || SINGLES.B).map(([lb, k, u]) => {
+      const val = Array.isArray(k) ? k.map(v).filter(Boolean).join('/') : v(k);
+      return val ? `<span>${esc(lb)} <b>${esc(val)}${u}</b></span>` : '';
+    }).filter(Boolean);
+    const half = Math.ceil(chips.length / 2);
+    const sg = [chips.slice(0, half).join(''), chips.slice(half).join('')];
+    const rows = DETAIL[template] || DETAIL.B;
+    return rows.map((row, i) => {
+      const h = row.map((t, j) => {
+        const tb = tables([t]);
+        return i === 0 && j === row.length - 1 && rows.length > 1 && tb ? `<div class="col" style="flex:0 1 auto">${tb}<div class="sg">${sg[0]}</div></div>` : tb;
+      }).join('') + (i === rows.length - 1 ? `<div class="col"><div class="sg">${rows.length > 1 ? sg[1] : sg.join('')}</div></div>` : '');
+      return h ? `<div class="rw">${h}</div>` : '';
+    }).join('');
   }
 
-  // d: {customer, code, name, mold, line, material, grade, color, weight, note, cond:[[라벨,값]], condDate, photo}
+  // d: {customer, code, name, mold, line, material, grade, color, weight, note, template, values, condDate, photo}
   function oneMoldTag(d, logo) {
-    const row = (k, v, k2, v2) => k2 === undefined
-      ? `<tr><td class="k">${esc(k)}</td><td class="v" colspan="3">${esc(v)}</td></tr>`
-      : `<tr><td class="k">${esc(k)}</td><td class="v">${esc(v)}</td><td class="k">${esc(k2)}</td><td class="v">${esc(v2)}</td></tr>`;
+    const cd = d.values ? condHTML(d.template || 'B', d.values) : '';
     return `<div class="mt">
       <div class="mt-ph">${d.photo ? `<img class="p" src="${esc(d.photo)}" alt="">` : '<div class="np">제품 사진</div>'}${logo ? `<img class="l" src="${esc(logo)}" alt="GAON TECH">` : ''}</div>
       <div class="mt-b">
         <div class="mt-h"><span class="c">${esc(d.customer)}</span><span class="n">${esc(d.name)}</span></div>
-        <table>
-          ${row('품목번호', d.code, '생산 라인', d.line)}
-          ${row('금형', d.mold, '중량', d.weight)}
-          ${row('원료', [d.material, d.grade].filter(Boolean).join(' / '))}
-          ${row('색상', d.color, '비고', d.note)}
+        <table class="i">
+          <tr><td class="k">품목번호</td><td class="v">${esc(d.code)}</td><td class="k">생산 라인</td><td class="v">${esc(d.line)}</td><td class="k">금형</td><td class="v">${esc(d.mold)}</td></tr>
+          <tr><td class="k">원료</td><td class="v" colspan="3">${esc([d.material, d.grade].filter(Boolean).join(' / '))}</td><td class="k">색상</td><td class="v">${esc(d.color)}</td></tr>
+          <tr><td class="k">중량</td><td class="v" colspan="5">${esc(d.weight)}</td></tr>
+          <tr><td class="k">비고</td><td class="v" colspan="5">${esc(d.note)}</td></tr>
         </table>
-        ${(d.cond || []).length
-          ? `<div class="cond"><div class="ct">간단 작업조건 (작업조건표 ${esc(d.condDate || '')} 기록)</div>${d.cond.map(([k, v]) => `<div>${esc(k)}<b>${esc(v)}</b></div>`).join('')}</div>`
-          : `<div class="cond nocond"><div class="ct">간단 작업조건</div><div class="msg">작업조건표에 아직 기록이 없습니다. 설비 화면 사진을 앱에 올리면 다음 표찰부터 자동으로 들어갑니다.</div></div>`}
+        <div class="cd">${cd
+          ? `<div class="ttl">작업조건 (작업조건표 ${esc(d.condDate || '')} 기록)</div>${cd}`
+          : '<div class="ttl">작업조건</div><div class="msg">작업조건표에 아직 기록이 없습니다. 설비 화면 사진을 앱에 올리면 다음 표찰부터 자동으로 들어갑니다.</div>'}</div>
       </div></div>`;
   }
   function moldTagPagesHTML(d, count = 3, logo = 'logo.png') {
     const n = Math.max(1, Math.min(60, parseInt(count, 10) || 3));
     const tags = Array.from({ length: n }, () => oneMoldTag(d, logo));
     const pages = [];
-    for (let i = 0; i < tags.length; i += 3) pages.push(`<div class="mt-page">${tags.slice(i, i + 3).join('')}${'<div></div>'.repeat(3 - tags.slice(i, i + 3).length)}</div>`);
+    for (let i = 0; i < tags.length; i += 3) {
+      const t = tags.slice(i, i + 3);
+      pages.push(`<div class="mt-page">${t.join('')}${'<div></div>'.repeat(3 - t.length)}</div>`);
+    }
     return pages.join('');
   }
 
-  g.GaonLabel = { LABEL_CSS, labelRows, labelPagesHTML, MOLD_CSS, simpleCond, moldTagPagesHTML };
+  g.GaonLabel = { LABEL_CSS, labelRows, labelPagesHTML, MOLD_CSS, moldTagPagesHTML };
 })(typeof window !== 'undefined' ? window : globalThis);
