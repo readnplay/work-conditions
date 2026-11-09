@@ -65,5 +65,66 @@
     return pages.join('');
   }
 
-  g.GaonLabel = { LABEL_CSS, labelRows, labelPagesHTML };
+  // ───── 금형 표찰: 가로 200mm × 세로 70mm, A4 세로에 3장. 잘라서 금형에 붙임 ─────
+  const MOLD_CSS = `
+.mt-page{width:210mm;height:297mm;padding:12mm 5mm;box-sizing:border-box;display:flex;flex-direction:column;justify-content:space-between;page-break-after:always;break-after:page;background:#fff;color:#000}
+.mt-page:last-child{page-break-after:auto;break-after:auto}
+.mt{width:200mm;height:70mm;box-sizing:border-box;border:1.5px solid #000;outline:1px dashed #999;outline-offset:2.5mm;display:grid;grid-template-columns:46mm 1fr;font-family:"Malgun Gothic","맑은 고딕","Apple SD Gothic Neo",sans-serif;overflow:hidden}
+.mt-ph{border-right:1.2px solid #000;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2mm;gap:2mm}
+.mt-ph img.p{max-width:42mm;max-height:44mm;object-fit:contain}
+.mt-ph .np{width:42mm;height:40mm;border:1px dashed #999;display:flex;align-items:center;justify-content:center;color:#888;font-size:9pt}
+.mt-ph img.l{max-width:30mm;max-height:13mm}
+.mt-b{display:flex;flex-direction:column;min-width:0}
+.mt-h{display:flex;align-items:baseline;gap:3mm;padding:1.5mm 3mm;border-bottom:1.2px solid #000;background:#eee;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.mt-h .c{font-size:17pt;font-weight:800;white-space:nowrap}
+.mt-h .n{font-size:15pt;font-weight:800;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mt table{border-collapse:collapse;width:100%;table-layout:fixed;font-size:9.5pt}
+.mt td{border-bottom:1px dotted #666;padding:0.6mm 1.5mm;height:5.6mm;vertical-align:middle;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.mt td.k{width:17mm;font-weight:700;background:#f6f6f6;border-right:1px dotted #666;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.mt td.v{font-weight:700}
+.mt .cond{display:grid;grid-template-columns:repeat(6,1fr);border-top:1.2px solid #000;flex:1}
+.mt .cond div{border-right:1px dotted #666;border-bottom:1px dotted #666;padding:0.4mm 1mm;font-size:7.5pt;line-height:1.15;overflow:hidden}
+.mt .cond div b{display:block;font-size:10pt;min-height:4mm}
+.mt .ct{grid-column:1/-1;font-size:8pt!important;font-weight:700;background:#f6f6f6;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+@media print{@page{size:A4 portrait;margin:0}}`;
+
+  // 간단 작업조건: 양식(A: 1~3호기, B: 4~6호기)별로 많이 보는 값만. 값이 없으면 손으로 쓰는 빈칸
+  const COND = {
+    A: [['노즐 온도', '노즐1'], ['실2', '실2'], ['실3', '실3'], ['실4', '실4'], ['사출속도1', '사출속도1'], ['사출압력', '사출압력'],
+        ['보압1', '보압1'], ['보압시간', '보압시간'], ['냉각시간', '냉각시간'], ['계량', '계량스트로크'], ['배압1', '배압1'], ['사이클', '']],
+    B: [['노즐 NZ', '히터 NZ(℃)'], ['히터1', '히터1(℃)'], ['히터2', '히터2(℃)'], ['히터3', '히터3(℃)'], ['사출 SP1', '사출 SP1(%)'], ['사출 PR1', '사출 PR1(bar)'],
+        ['보압 PR1H', '보압 PR1H(bar)'], ['보압 시간', '보압 TIME1H(s)'], ['냉각시간', '냉각시간(s)'], ['계량 POS', '계량 POS4C(mm)'], ['배압 BP1C', '계량 BP1C(%)'], ['사이클', '사이클시간(s)']],
+  };
+  function simpleCond(template, values = {}) {
+    return (COND[template] || COND.B).map(([label, key]) => [label, key ? values[key] || '' : '']);
+  }
+
+  // d: {customer, code, name, mold, line, material, grade, color, weight, note, cond:[[라벨,값]], condDate, photo}
+  function oneMoldTag(d, logo) {
+    const row = (k, v, k2, v2) => k2 === undefined
+      ? `<tr><td class="k">${esc(k)}</td><td class="v" colspan="3">${esc(v)}</td></tr>`
+      : `<tr><td class="k">${esc(k)}</td><td class="v">${esc(v)}</td><td class="k">${esc(k2)}</td><td class="v">${esc(v2)}</td></tr>`;
+    return `<div class="mt">
+      <div class="mt-ph">${d.photo ? `<img class="p" src="${esc(d.photo)}" alt="">` : '<div class="np">제품 사진</div>'}${logo ? `<img class="l" src="${esc(logo)}" alt="GAON TECH">` : ''}</div>
+      <div class="mt-b">
+        <div class="mt-h"><span class="c">${esc(d.customer)}</span><span class="n">${esc(d.name)}</span></div>
+        <table>
+          ${row('품목번호', d.code, '생산 라인', d.line)}
+          ${row('금형', d.mold, '중량', d.weight)}
+          ${row('원료', [d.material, d.grade].filter(Boolean).join(' / '))}
+          ${row('색상', d.color, '비고', d.note)}
+        </table>
+        <div class="cond"><div class="ct">간단 작업조건${d.condDate ? ` (${esc(d.condDate)} 기록)` : ' (작업 후 적어 주세요)'}</div>
+          ${(d.cond || []).map(([k, v]) => `<div>${esc(k)}<b>${esc(v)}</b></div>`).join('')}</div>
+      </div></div>`;
+  }
+  function moldTagPagesHTML(d, count = 3, logo = 'logo.png') {
+    const n = Math.max(1, Math.min(60, parseInt(count, 10) || 3));
+    const tags = Array.from({ length: n }, () => oneMoldTag(d, logo));
+    const pages = [];
+    for (let i = 0; i < tags.length; i += 3) pages.push(`<div class="mt-page">${tags.slice(i, i + 3).join('')}${'<div></div>'.repeat(3 - tags.slice(i, i + 3).length)}</div>`);
+    return pages.join('');
+  }
+
+  g.GaonLabel = { LABEL_CSS, labelRows, labelPagesHTML, MOLD_CSS, simpleCond, moldTagPagesHTML };
 })(typeof window !== 'undefined' ? window : globalThis);

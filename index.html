@@ -417,6 +417,13 @@ function labelView(body, rs) {
       <button class="btn ghost" id="lbToday">생산일자 = 오늘</button>
       <button class="btn" id="lbPrint">🖨 현품표 인쇄</button>
     </div>
+    <h3>금형 표찰 <span class="muted">(가로 20cm × 세로 7cm, A4 한 장에 3장)</span></h3>
+    <div class="row">
+      <label style="flex:0 0 110px">장 수<input id="mtCount" type="number" min="1" max="60" value="3"></label>
+      <button class="btn" id="mtPrint">🖨 금형 표찰 인쇄</button>
+    </div>
+    <p class="muted">업체·품명·품목번호·금형·생산 라인(호기)·중량·원료·색상·최근 작업조건·제품 사진이 들어갑니다. 제품 사진은 사진 종류를 '제품'으로 올린 것을 씁니다.</p>
+    <div id="mtPrev" style="overflow:hidden;border:1px solid var(--line);border-radius:8px;margin-top:8px;background:#fff"></div>
     <p class="muted">A4 한 장에 ${made ? '3장(MADE IN KOREA 포함)' : '6장'}. 휴대폰에서는 인쇄 화면에서 프린터를 고르거나 PDF로 저장할 수 있습니다.</p>
     <div id="lbPrev" style="overflow:hidden;border:1px solid var(--line);border-radius:8px;margin-top:8px;background:#fff"></div>
   </div>`;
@@ -427,6 +434,24 @@ function labelView(body, rs) {
     box.innerHTML = `<div style="transform:scale(${sc});transform-origin:0 0;width:794px">${GaonLabel.labelPagesHTML(c, p, { ...opt(), count: made ? 3 : 6 }, '/logo.png')}</div>`;
   };
   ['lbQty', 'lbDate'].forEach(id => $('#' + id).oninput = preview);
+  // 금형 표찰: 제품목록 + 최근 기록에서 모음
+  const condRec = rs.find(r => r.params && Object.keys(r.params.values || {}).length);
+  const prodPhoto = rs.flatMap(r => r.photos || []).find(ph => ph.tag === '제품');
+  const tag = {
+    customer: (c.label && c.label.title) || c.name, code: p.lcode ?? p.code, name: p.lname ?? p.name,
+    mold: p.mold || (rs.find(r => r.mold) || {}).mold || '', line: [...new Set(rs.map(r => r.machine).filter(Boolean))].sort().map(m => m + '호기').join(', '),
+    material: p.material, grade: p.grade, color: p.color, weight: p.weight || '', note: p.pack ? '포장 ' + p.pack : '',
+    cond: GaonLabel.simpleCond(condRec ? condRec.params.template || templateFor(condRec.machine) : templateFor((rs.find(r => r.machine) || {}).machine || '4'), condRec ? condRec.params.values : {}),
+    condDate: condRec ? condRec.date + ' ' + (condRec.machine || '') + '호기' : '', photo: prodPhoto ? photoUrl(prodPhoto.path) : '',
+  };
+  const mbox = $('#mtPrev'); const msc = (mbox.clientWidth || 340) / 794;
+  mbox.style.height = Math.round(300 * msc) + 'px';
+  mbox.innerHTML = `<div style="transform:scale(${msc});transform-origin:0 0;width:794px;padding-top:4px">${GaonLabel.moldTagPagesHTML(tag, 1, '/logo.png').replace('class="mt-page"', 'class="mt-page" style="height:auto;padding:4mm 5mm"')}</div>`;
+  $('#mtPrint').onclick = () => {
+    $('#printArea').innerHTML = GaonLabel.moldTagPagesHTML(tag, $('#mtCount').value, '/logo.png');
+    const imgs = [...$('#printArea').querySelectorAll('img')];
+    Promise.all(imgs.map(i => i.complete ? 1 : new Promise(r => { i.onload = i.onerror = r; }))).then(() => window.print());
+  };
   $('#lbToday').onclick = () => { $('#lbDate').value = today; preview(); };
   $('#lbPrint').onclick = () => {
     $('#printArea').innerHTML = GaonLabel.labelPagesHTML(c, p, opt(), '/logo.png');
@@ -564,7 +589,7 @@ function bindCommon(root) {
 // ───────── 거래처별 제품 목록(맵핑) 관리 ─────────
 // 엑셀에서 복사해 붙여 넣기: 한 줄에 한 제품, 열 순서는 기존 현품표 '제품 LIST'와 같음
 const CAT_COLS = [['code', '코드'], ['name', '제품명'], ['spec', '규격'], ['material', '원료'], ['grade', 'GRADE'], ['color', '색상'],
-  ['pack', '포장수량'], ['pack2', '포장수량2(포대)'], ['ul', 'UL'], ['model', 'MODEL']];
+  ['pack', '포장수량'], ['pack2', '포장수량2(포대)'], ['ul', 'UL'], ['model', 'MODEL'], ['mold', '금형'], ['weight', '중량']];
 function parseLines(text, old = []) {
   return text.split(/\r?\n/).filter(l => l.trim()).map(l => {
     const cols = l.split('\t').map(s => s.trim());
@@ -988,7 +1013,7 @@ $('#fab').onclick = () => openForm();
 $('#home').onclick = () => { S.view = ''; S.customer = ''; S.product = ''; S.recId = ''; S.tab = 'cond'; S.q = ''; $('#fab').classList.remove('hide'); pushState(); render(); };
 $('#catBtn').onclick = () => { S.view = 'catalog'; S.product = ''; pushState(); render(); };
 $('#reload').onclick = () => load();
-document.head.insertAdjacentHTML('beforeend', '<style>' + GaonLabel.LABEL_CSS + '</style>');
+document.head.insertAdjacentHTML('beforeend', '<style>' + GaonLabel.LABEL_CSS + GaonLabel.MOLD_CSS + '</style>');
 readState();
 load();
 </script>
