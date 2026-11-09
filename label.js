@@ -16,8 +16,8 @@
 .gl-label td.gl-v{font-size:11pt}
 .gl-label td.gl-v.s{font-size:9pt}.gl-label td.gl-v.xs{font-size:7pt}
 .gl-logo{flex:1;display:flex;align-items:center;justify-content:center;min-height:0;padding:1mm}
-.gl-logo img{max-height:15mm;max-width:42%}
-.gl-made{border:1.2px solid #000;border-left:0;display:flex;align-items:center;justify-content:center;text-align:center;font:900 30pt/1.15 Arial,"Malgun Gothic",sans-serif}
+.gl-logo img{max-height:14mm;max-width:42%}
+.gl-made{border:1.2px solid #000;border-left:0;display:flex;align-items:center;justify-content:center;text-align:center;font:900 40pt/1.15 Arial,"Malgun Gothic",sans-serif}
 .gl-row.made{column-gap:0}
 .gl-empty{border:0}
 @media print{@page{size:A4 portrait;margin:0}}`;
@@ -42,8 +42,10 @@
 
   function oneLabel(c, p, opt, logo) {
     const sz = v => (String(v).length > 34 ? ' xs' : String(v).length > 19 ? ' s' : '');
+    const rows = labelRows(c, p, opt);
+    const h = Math.min(7.6, 62 / rows.length).toFixed(2); // 줄이 많아도 로고까지 한 칸 안에 들어가게
     return `<div class="gl-label"><table><tr><th class="gl-title" colspan="2">현품표</th></tr>
-      ${labelRows(c, p, opt).map(([k, v]) => `<tr><td class="gl-k">${esc(k)}</td><td class="gl-v${sz(v)}">${esc(v)}</td></tr>`).join('')}
+      ${rows.map(([k, v]) => `<tr><td class="gl-k" style="height:${h}mm">${esc(k)}</td><td class="gl-v${sz(v)}" style="height:${h}mm">${esc(v)}</td></tr>`).join('')}
       </table><div class="gl-logo">${logo ? `<img src="${esc(logo)}" alt="GAON TECH">` : ''}</div></div>`;
   }
 
