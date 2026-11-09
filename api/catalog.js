@@ -16,10 +16,17 @@ function clean(input) {
       const id = code || pname;
       if (!id || seen.has(id)) continue;
       seen.add(id);
-      products.push({ code, name: pname, note: s(p.note, 200) });
+      // 현품표 칸: 규격·원료·GRADE·색상·포장수량(소포장/BOX, 포대)·UL·MODEL. lcode/lname 은 현품표에 다르게 찍을 때(빈칸 포함)
+      const item = { code, name: pname, note: s(p.note, 200) };
+      for (const k of ['spec', 'material', 'grade', 'color', 'pack', 'pack2', 'ul', 'model']) if (p[k]) item[k] = s(p[k], 200);
+      for (const k of ['lcode', 'lname']) if (typeof p[k] === 'string') item[k] = s(p[k], 200);
+      products.push(item);
     }
     const i = c.info || {};
-    customers.push({ name, info: { rep: s(i.rep, 60), phone: s(i.phone, 60), memo: s(i.memo, 2000) }, products });
+    const l = c.label || {};
+    const label = { title: s(l.title, 80), extra: ['UL Number', 'MODEL'].includes(l.extra) ? l.extra : '', extraValue: s(l.extraValue, 80), codeLabel: s(l.codeLabel, 20), madeIn: !!l.madeIn,
+      hide: (Array.isArray(l.hide) ? l.hide : []).filter(h => ['규격', '원료', 'GRADE', '색상', '생산일자'].includes(h)) };
+    customers.push({ name, info: { rep: s(i.rep, 60), phone: s(i.phone, 60), memo: s(i.memo, 4000) }, label, products });
   }
   return { customers, updatedAt: new Date().toISOString() };
 }

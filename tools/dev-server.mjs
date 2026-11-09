@@ -34,7 +34,7 @@ http.createServer(async (req, res) => {
     const file = url.pathname === '/' ? 'index.html' : url.pathname.slice(1);
     const buf = await fs.readFile(path.join(root, path.normalize(file)));
     const ext = path.extname(file);
-    res.setHeader('Content-Type', ext === '.html' ? 'text/html; charset=utf-8' : 'text/plain; charset=utf-8');
+    res.setHeader('Content-Type', { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.png': 'image/png' }[ext] || 'text/plain; charset=utf-8');
     res.end(buf);
   } catch (e) {
     if (!res.headersSent) res.statusCode = e.code === 'ENOENT' ? 404 : 500;

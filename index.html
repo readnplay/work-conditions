@@ -100,6 +100,8 @@ table.s td,table.s th{border-bottom:1px solid var(--line);padding:4px 6px;text-a
 table.s td.v{text-align:right;font-weight:600;white-space:nowrap}
 .catrow{display:flex;gap:8px;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line);padding:8px 0}
 @media (max-width:600px){ main{padding:10px 10px 100px} .card{padding:12px} }
+#printArea{display:none}
+@media print{ body>*:not(#printArea){display:none!important} #printArea{display:block} body{background:#fff} }
 </style>
 </head>
 <body>
@@ -113,6 +115,8 @@ table.s td.v{text-align:right;font-weight:600;white-space:nowrap}
 <div id="modal" class="modal hide"></div>
 <div id="viewer" class="viewer hide"></div>
 <div id="toast" class="toast hide"></div>
+<div id="printArea"></div>
+<script src="/label.js"></script>
 
 <script>
 // ───────── 호기별 조건 양식 ─────────
@@ -341,9 +345,11 @@ function renderProduct() {
   if (!rs.length) {
     $('#app').innerHTML = `<div class="card"><span class="muted">${esc(S.customer)}</span>
       <h2>${esc(S.product)}${pName ? ' <span class="muted">' + esc(pName) + '</span>' : ''}</h2>
-      <p class="muted">아직 기록이 없습니다. 작업할 때 사진을 찍어 첫 기록을 남겨 주세요.</p>
-      <button class="btn" id="firstRec">＋ 첫 기록 추가</button></div>`;
+      <p class="muted">아직 작업 기록이 없습니다. 작업할 때 사진을 찍어 첫 기록을 남겨 주세요.</p>
+      <button class="btn" id="firstRec">＋ 첫 기록 추가</button></div>
+      <h3>현품표</h3><div id="tabbody"></div>`;
     $('#firstRec').onclick = () => openForm();
+    labelView($('#tabbody'), rs);
     return;
   }
   const condRecs = rs.filter(hasParams);
@@ -371,6 +377,7 @@ function renderProduct() {
       <button class="tab ${S.tab === 'cond' ? 'on' : ''}" data-t="cond">작업조건 (${condRecs.length})</button>
       <button class="tab ${S.tab === 'photo' ? 'on' : ''}" data-t="photo">사진 (${photos.length})</button>
       <button class="tab ${S.tab === 'log' ? 'on' : ''}" data-t="log">원료·특이사항 기록 (${rs.length})</button>
+      <button class="tab ${S.tab === 'label' ? 'on' : ''}" data-t="label">현품표</button>
     </div>
     <div id="tabbody"></div>`;
   $('#selC').onchange = e => { S.customer = e.target.value; S.product = ''; pushState(); render(); };
@@ -380,8 +387,53 @@ function renderProduct() {
   const body = $('#tabbody');
   if (S.tab === 'cond') body.innerHTML = condView(condRecs);
   else if (S.tab === 'photo') body.innerHTML = photoView(photos);
+  else if (S.tab === 'label') return labelView(body, rs);
   else body.innerHTML = logView(rs);
   bindCommon(body);
+}
+
+// ───────── 현품표 (label.js 로 그림) ─────────
+function labelData(rs) {
+  const c = catCustomer(S.customer) || { name: S.customer, label: {} };
+  const cp = (c.products || []).find(p => pidOf(p) === S.product);
+  const p = cp ? { ...cp } : { code: S.product, name: (rs.find(r => r.productName) || {}).productName || '' };
+  // 제품 목록에 원료가 없으면 최근 기록의 원료로
+  if (!p.material) p.material = (rs.find(r => r.material) || {}).material || '';
+  return { c, p, inCatalog: !!cp };
+}
+function labelView(body, rs) {
+  const { c, p, inCatalog } = labelData(rs);
+  const made = !!(c.label && c.label.madeIn);
+  const today = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10).replace(/-/g, '.');
+  body.innerHTML = `<div class="card">
+    ${inCatalog ? '' : '<div class="aibox">이 제품은 제품목록에 없어 기록에 있는 값으로 만들었습니다. 상단 [제품목록]에서 규격·GRADE·색상·포장수량을 넣으면 현품표에 나옵니다.</div>'}
+    <div class="row">
+      <label>수량<input id="lbQty" value="${esc(p.pack || '')}" placeholder="예: 1,500 EA"></label>
+      <label>생산일자<input id="lbDate" placeholder="비우면 손으로 쓰는 칸"></label>
+      <label style="flex:0 0 110px">장 수<input id="lbCount" type="number" min="1" max="300" value="${made ? 3 : 6}"></label>
+    </div>
+    ${p.pack2 ? `<p class="muted">포장 수량: 소포장 ${esc(p.pack)} / 포대 ${esc(p.pack2)} — 필요한 쪽을 수량 칸에 넣으세요.</p>` : ''}
+    <div class="row" style="margin-top:8px">
+      <button class="btn ghost" id="lbToday">생산일자 = 오늘</button>
+      <button class="btn" id="lbPrint">🖨 현품표 인쇄</button>
+    </div>
+    <p class="muted">A4 한 장에 ${made ? '3장(MADE IN KOREA 포함)' : '6장'}. 휴대폰에서는 인쇄 화면에서 프린터를 고르거나 PDF로 저장할 수 있습니다.</p>
+    <div id="lbPrev" style="overflow:hidden;border:1px solid var(--line);border-radius:8px;margin-top:8px;background:#fff"></div>
+  </div>`;
+  const opt = () => ({ qty: $('#lbQty').value.trim(), date: $('#lbDate').value.trim(), count: $('#lbCount').value });
+  const preview = () => {
+    const box = $('#lbPrev'); const w = box.clientWidth || 340; const sc = w / 794; // A4 폭 210mm ≈ 794px
+    box.style.height = Math.round(1123 * sc) + 'px';
+    box.innerHTML = `<div style="transform:scale(${sc});transform-origin:0 0;width:794px">${GaonLabel.labelPagesHTML(c, p, { ...opt(), count: made ? 3 : 6 }, '/logo.png')}</div>`;
+  };
+  ['lbQty', 'lbDate'].forEach(id => $('#' + id).oninput = preview);
+  $('#lbToday').onclick = () => { $('#lbDate').value = today; preview(); };
+  $('#lbPrint').onclick = () => {
+    $('#printArea').innerHTML = GaonLabel.labelPagesHTML(c, p, opt(), '/logo.png');
+    const imgs = [...$('#printArea').querySelectorAll('img')];
+    Promise.all(imgs.map(i => i.complete ? 1 : new Promise(r => { i.onload = i.onerror = r; }))).then(() => window.print());
+  };
+  preview();
 }
 
 function condView(condRecs) {
@@ -510,14 +562,24 @@ function bindCommon(root) {
 }
 
 // ───────── 거래처별 제품 목록(맵핑) 관리 ─────────
-// 엑셀에서 [제품코드, 제품명] 두 열을 복사해 붙여 넣으면 한 줄에 한 제품으로 저장
-function parseLines(text) {
-  return text.split(/\r?\n/).map(l => l.trim()).filter(Boolean).map(l => {
-    const cols = (l.includes('\t') ? l.split('\t') : l.includes(',') ? l.split(',') : l.split(/\s{2,}/)).map(s => s.trim());
-    return { code: cols[0] || '', name: cols.slice(1).filter(Boolean).join(' '), note: '' };
+// 엑셀에서 복사해 붙여 넣기: 한 줄에 한 제품, 열 순서는 기존 현품표 '제품 LIST'와 같음
+const CAT_COLS = [['code', '코드'], ['name', '제품명'], ['spec', '규격'], ['material', '원료'], ['grade', 'GRADE'], ['color', '색상'],
+  ['pack', '포장수량'], ['pack2', '포장수량2(포대)'], ['ul', 'UL'], ['model', 'MODEL']];
+function parseLines(text, old = []) {
+  return text.split(/\r?\n/).filter(l => l.trim()).map(l => {
+    const cols = l.split('\t').map(s => s.trim());
+    const p = {};
+    CAT_COLS.forEach(([k], i) => { if (cols[i]) p[k] = cols[i]; });
+    // 표에 없는 값(메모, 현품표 표기)은 기존 것 유지
+    const prev = old.find(o => pidOf(o) === (p.code || p.name));
+    if (prev) for (const k of ['note', 'lcode', 'lname']) if (prev[k] !== undefined) p[k] = prev[k];
+    return p;
   }).filter(p => p.code || p.name);
 }
-const toLines = ps => ps.map(p => [p.code, p.name].filter(Boolean).join('\t')).join('\n');
+const toLines = ps => ps.map(p => CAT_COLS.map(([k]) => p[k] || '').join('\t').replace(/\t+$/, '')).join('\n');
+const HIDEABLE = ['규격', '원료', 'GRADE', '색상', '생산일자'];
+const readLabel = () => ({ title: $('#clTitle').value, extra: $('#clExtra').value, extraValue: $('#clExtraV').value, codeLabel: $('#clCode').value, madeIn: $('#clMade').checked,
+  hide: HIDEABLE.filter(h => $('#clHide_' + h).checked) });
 async function saveCatalog(next) {
   const j = await api('/api/catalog', { method: 'POST', body: JSON.stringify(next) });
   CATALOG = j; return j;
@@ -533,7 +595,7 @@ function renderCatalog() {
   $('#app').innerHTML = `
     <div class="card">
       <h2>거래처별 제품 목록</h2>
-      <p class="muted">여기에 넣은 제품만 거래처를 골랐을 때 목록에 나옵니다. 엑셀에서 <b>제품코드 · 제품명</b> 두 열을 복사해 붙여 넣으세요.</p>
+      <p class="muted">여기에 넣은 제품만 거래처를 골랐을 때 목록에 나옵니다. 현품표도 이 정보로 만들어집니다.</p>
       <label>거래처</label>
       <div class="chips" style="margin:6px 0 10px">
         ${cs.map(x => `<button class="chip ${x === cur ? 'on' : ''}" data-cc="${esc(x)}">${esc(x)} <span class="muted">${(catCustomer(x) || { products: [] }).products.length}</span></button>`).join('')}
@@ -547,9 +609,21 @@ function renderCatalog() {
         <label>연락처<input id="ciPhone" inputmode="tel" value="${esc((c.info || {}).phone)}"></label>
       </div>
       <label style="margin-top:8px">메모<textarea id="ciMemo">${esc((c.info || {}).memo)}</textarea></label>
+      <h3>현품표 양식</h3>
+      <div class="row">
+        <label>현품표 업체명<input id="clTitle" value="${esc((c.label || {}).title)}" placeholder="${esc(cur)}"></label>
+        <label>코드 칸 이름<input id="clCode" value="${esc((c.label || {}).codeLabel)}" placeholder="품목번호"></label>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <label>추가 줄<select id="clExtra">${['', 'UL Number', 'MODEL'].map(x => `<option value="${x}" ${(c.label || {}).extra === x ? 'selected' : ''}>${x || '없음'}</option>`).join('')}</select></label>
+        <label>추가 줄 기본값<input id="clExtraV" value="${esc((c.label || {}).extraValue)}" placeholder="예: E45329"></label>
+        <label style="flex:0 0 auto"><input type="checkbox" id="clMade" ${(c.label || {}).madeIn ? 'checked' : ''} style="min-height:auto;display:inline;width:auto"> MADE IN KOREA 붙이기</label>
+      </div>
+      <label style="margin-top:8px">현품표에서 뺄 줄</label>
+      <div class="chips" style="margin-top:4px">${HIDEABLE.map(h => `<label class="chip" style="display:inline-flex;gap:4px;align-items:center"><input type="checkbox" id="clHide_${h}" ${((c.label || {}).hide || []).includes(h) ? 'checked' : ''} style="min-height:auto;width:auto">${h}</label>`).join('')}</div>
       <h3>${esc(cur)} 제품 ${c.products.length}개</h3>
-      <textarea id="catText" style="width:100%;min-height:260px;font-family:monospace" placeholder="20901526&#9;케이스 상판&#10;20901527&#9;케이스 하판">${esc(toLines(c.products))}</textarea>
-      <p class="muted">한 줄에 한 제품: 제품코드 [탭] 제품명. 코드가 없으면 제품명만 적어도 됩니다.</p>
+      <p class="muted">한 줄에 한 제품. 열 순서(탭으로 구분): ${CAT_COLS.map(c => c[1]).join(' · ')}. 기존 현품표 엑셀의 '제품 LIST'를 그대로 복사해 붙여도 됩니다. 뒤쪽 열은 비워도 됩니다.</p>
+      <textarea id="catText" wrap="off" style="width:100%;min-height:260px;font-family:monospace;font-size:13px" placeholder="20901526&#9;사출 DOME COVER-FISHEYE&#9;(CP15MOL049-A) PC(CLEAR)&#9;SABIC&#9;PC 143R-112&#9;clear&#9;880 EA">${esc(toLines(c.products))}</textarea>
       ${recOnly.length ? `<div class="aibox">기록은 있지만 목록에 없는 제품: ${recOnly.map(esc).join(', ')}
         <button class="btn ghost" id="addRecOnly" style="margin-left:6px">목록에 넣기</button></div>` : ''}
       <div class="row" style="margin-top:10px;justify-content:flex-end">
@@ -569,13 +643,13 @@ function renderCatalog() {
   const others = CATALOG.customers.filter(x => x.name !== cur);
   const readInfo = () => ({ rep: $('#ciRep').value, phone: $('#ciPhone').value, memo: $('#ciMemo').value });
   $('#saveCat').onclick = async () => {
-    const ps = parseLines($('#catText').value);
-    try { await saveCatalog({ customers: others.concat([{ name: cur, info: readInfo(), products: ps }]) }); toast(`${cur} 제품 ${ps.length}개 저장했습니다`); renderCatalog(); }
+    const ps = parseLines($('#catText').value, c.products);
+    try { await saveCatalog({ customers: others.concat([{ name: cur, info: readInfo(), label: readLabel(), products: ps }]) }); toast(`${cur} 제품 ${ps.length}개 저장했습니다`); renderCatalog(); }
     catch (e) { if (e.message !== 'login') toast('저장 실패: ' + e.message); }
   };
   $('#delCust').onclick = async () => {
     if (!confirm(`${cur}의 제품 목록을 비울까요? (작업 기록은 지워지지 않습니다)`)) return;
-    try { await saveCatalog({ customers: others.concat([{ name: cur, info: readInfo(), products: [] }]) }); toast('비웠습니다'); renderCatalog(); } catch (e) { toast(e.message); }
+    try { await saveCatalog({ customers: others.concat([{ name: cur, info: readInfo(), label: readLabel(), products: [] }]) }); toast('비웠습니다'); renderCatalog(); } catch (e) { toast(e.message); }
   };
   const addBtn = $('#addRecOnly');
   if (addBtn) addBtn.onclick = () => {
@@ -914,6 +988,7 @@ $('#fab').onclick = () => openForm();
 $('#home').onclick = () => { S.view = ''; S.customer = ''; S.product = ''; S.recId = ''; S.tab = 'cond'; S.q = ''; $('#fab').classList.remove('hide'); pushState(); render(); };
 $('#catBtn').onclick = () => { S.view = 'catalog'; S.product = ''; pushState(); render(); };
 $('#reload').onclick = () => load();
+document.head.insertAdjacentHTML('beforeend', '<style>' + GaonLabel.LABEL_CSS + '</style>');
 readState();
 load();
 </script>
