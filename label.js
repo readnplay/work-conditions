@@ -85,10 +85,12 @@
 .mt .cond{display:grid;grid-template-columns:repeat(6,1fr);border-top:1.2px solid #000;flex:1}
 .mt .cond div{border-right:1px dotted #666;border-bottom:1px dotted #666;padding:0.4mm 1mm;font-size:7.5pt;line-height:1.15;overflow:hidden}
 .mt .cond div b{display:block;font-size:10pt;min-height:4mm}
+.mt .nocond{display:flex;flex-direction:column}
+.mt .nocond .msg{flex:1;border:0;font-size:9pt;color:#555;display:flex;align-items:center;padding:0 2mm}
 .mt .ct{grid-column:1/-1;font-size:8pt!important;font-weight:700;background:#f6f6f6;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 @media print{@page{size:A4 portrait;margin:0}}`;
 
-  // 간단 작업조건: 양식(A: 1~3호기, B: 4~6호기)별로 많이 보는 값만. 값이 없으면 손으로 쓰는 빈칸
+  // 간단 작업조건: 작업조건표에 기록된 값 중 많이 보는 것만(양식 A: 1~3호기, B: 4~6호기). 기록 없는 칸은 넣지 않음(손으로 쓰는 칸 없음)
   const COND = {
     A: [['노즐 온도', '노즐1'], ['실2', '실2'], ['실3', '실3'], ['실4', '실4'], ['사출속도1', '사출속도1'], ['사출압력', '사출압력'],
         ['보압1', '보압1'], ['보압시간', '보압시간'], ['냉각시간', '냉각시간'], ['계량', '계량스트로크'], ['배압1', '배압1'], ['사이클', '']],
@@ -96,7 +98,7 @@
         ['보압 PR1H', '보압 PR1H(bar)'], ['보압 시간', '보압 TIME1H(s)'], ['냉각시간', '냉각시간(s)'], ['계량 POS', '계량 POS4C(mm)'], ['배압 BP1C', '계량 BP1C(%)'], ['사이클', '사이클시간(s)']],
   };
   function simpleCond(template, values = {}) {
-    return (COND[template] || COND.B).map(([label, key]) => [label, key ? values[key] || '' : '']);
+    return (COND[template] || COND.B).map(([label, key]) => [label, key ? values[key] || '' : '']).filter(([, v]) => v !== '');
   }
 
   // d: {customer, code, name, mold, line, material, grade, color, weight, note, cond:[[라벨,값]], condDate, photo}
@@ -114,8 +116,9 @@
           ${row('원료', [d.material, d.grade].filter(Boolean).join(' / '))}
           ${row('색상', d.color, '비고', d.note)}
         </table>
-        <div class="cond"><div class="ct">간단 작업조건${d.condDate ? ` (${esc(d.condDate)} 기록)` : ' (작업 후 적어 주세요)'}</div>
-          ${(d.cond || []).map(([k, v]) => `<div>${esc(k)}<b>${esc(v)}</b></div>`).join('')}</div>
+        ${(d.cond || []).length
+          ? `<div class="cond"><div class="ct">간단 작업조건 (작업조건표 ${esc(d.condDate || '')} 기록)</div>${d.cond.map(([k, v]) => `<div>${esc(k)}<b>${esc(v)}</b></div>`).join('')}</div>`
+          : `<div class="cond nocond"><div class="ct">간단 작업조건</div><div class="msg">작업조건표에 아직 기록이 없습니다. 설비 화면 사진을 앱에 올리면 다음 표찰부터 자동으로 들어갑니다.</div></div>`}
       </div></div>`;
   }
   function moldTagPagesHTML(d, count = 3, logo = 'logo.png') {
