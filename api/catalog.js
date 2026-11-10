@@ -18,15 +18,20 @@ function clean(input) {
       seen.add(id);
       // 현품표 칸: 규격·원료·GRADE·색상·포장수량(소포장/BOX, 포대)·UL·MODEL. lcode/lname 은 현품표에 다르게 찍을 때(빈칸 포함)
       const item = { code, name: pname, note: s(p.note, 200) };
-      for (const k of ['spec', 'material', 'grade', 'color', 'pack', 'pack2', 'ul', 'model', 'mold', 'weight']) if (p[k]) item[k] = s(p[k], 200);
+      for (const k of ['spec', 'material', 'grade', 'color', 'pack', 'pack2', 'ul', 'model', 'mold', 'weight', 'price']) if (p[k]) item[k] = s(p[k], 200);
       for (const k of ['lcode', 'lname']) if (typeof p[k] === 'string') item[k] = s(p[k], 200);
+      // 단가 이력(거래명세서 발행·장부): 최근 50건
+      if (Array.isArray(p.priceHist)) item.priceHist = p.priceHist.slice(-50).map(h => ({ date: s(h.date, 20), price: Number(h.price) || 0, qty: Number(h.qty) || 0, src: s(h.src, 40) }));
       products.push(item);
     }
     const i = c.info || {};
     const l = c.label || {};
     const label = { title: s(l.title, 80), extra: ['UL Number', 'MODEL'].includes(l.extra) ? l.extra : '', extraValue: s(l.extraValue, 80), codeLabel: s(l.codeLabel, 20), madeIn: !!l.madeIn,
       hide: (Array.isArray(l.hide) ? l.hide : []).filter(h => ['규격', '원료', 'GRADE', '색상', '생산일자'].includes(h)) };
-    customers.push({ name, info: { rep: s(i.rep, 60), phone: s(i.phone, 60), memo: s(i.memo, 4000) }, label, products });
+    // bill: 거래명세서 공급받는자(사업자등록번호·상호·성명·TEL·업태·종목·주소)
+    const b = i.bill || {};
+    const bill = b.bizNo || b.name ? { bizNo: s(b.bizNo, 20), name: s(b.name, 80), ceo: s(b.ceo, 40), tel: s(b.tel, 40), bizType: s(b.bizType, 40), bizItem: s(b.bizItem, 60), addr: s(b.addr, 200) } : undefined;
+    customers.push({ name, info: { rep: s(i.rep, 60), phone: s(i.phone, 60), memo: s(i.memo, 4000), ...(bill ? { bill } : {}) }, label, products });
   }
   return { customers, updatedAt: new Date().toISOString() };
 }
