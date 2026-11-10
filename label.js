@@ -37,7 +37,7 @@
     rows.push(['수량', opt.qty ?? p.pack ?? '']);
     rows.push(['생산일자', opt.date || '']);
     const hide = L.hide || [];
-    return rows.filter(([k]) => !hide.includes(k));
+    return rows.filter(([k, v]) => !hide.includes(k) && !(k === '규격' && !String(v).trim()));
   }
 
   function oneLabel(c, p, opt, logo) {
