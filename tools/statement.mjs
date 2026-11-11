@@ -78,7 +78,7 @@ td,th{border:1px solid #000;padding:0.6mm 1.2mm;font-size:8.5pt;height:5.2mm;ver
 .pt .side{width:6mm;text-align:center;font-weight:700;background:#eee;line-height:1.2;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .pt .k{width:13mm;text-align:center;background:#f4f4f4;font-weight:700;-webkit-print-color-adjust:exact;print-color-adjust:exact}.pt .k.s{width:9mm}
 .pt .addr{font-size:7.5pt;white-space:normal;line-height:1.15}
-.rel{position:relative}.stamp{position:absolute;left:11mm;top:-3.5mm;width:13mm;height:12mm;object-fit:contain;mix-blend-mode:multiply;opacity:.9}
+.pt td.rel{overflow:visible}.rel{position:relative}.stamp{position:absolute;left:10mm;top:-5mm;width:16mm;height:15mm;object-fit:contain;mix-blend-mode:multiply;opacity:.9}
 .b{font-weight:700}
 .it th{background:#eee;font-size:8.5pt;-webkit-print-color-adjust:exact;print-color-adjust:exact}.it td{text-align:center;height:6mm}
 .it td.l{text-align:left}.r{text-align:right!important}
