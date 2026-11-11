@@ -1,5 +1,6 @@
 // 현품표 그리기 (앱 화면과 tools/label.mjs 공용)
-// 기존 엑셀 양식(★★ 현품표.xlsx)과 같은 칸: 업체명 / (UL Number·MODEL) / 품목번호 / 품명 / 규격 / 원료 / GRADE / 색상 / 수량 / 생산일자 + 가온텍 로고
+// 기존 엑셀 양식(★★ 현품표.xlsx)과 같은 칸: 업체명 / (UL Number·MODEL) / 품목번호 / 품명 / 규격 / 원료 / GRADE / 색상 / 수량 / 생산일자
+// 가온텍 로고는 맨 위 제목 줄 왼쪽에 크게(사용자 요청 2026-11-12)
 // A4 세로 한 장에 3줄. 보통은 2장씩(6장), MADE IN KOREA 거래처는 현품표 + MADE IN KOREA 한 쌍씩(3장)
 (function (g) {
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -15,17 +16,18 @@
 .gl-label td.gl-k{width:27%;border-right:1px dotted #555;font-size:10pt}
 .gl-label td.gl-v{font-size:11pt}
 .gl-label td.gl-v.s{font-size:9pt}.gl-label td.gl-v.xs{font-size:7pt}
-.gl-logo{flex:1;display:flex;align-items:center;justify-content:center;min-height:0;padding:1mm}
-.gl-logo img{max-height:14mm;max-width:42%}
+.gl-head{display:flex;align-items:center;gap:2mm;padding:1mm 2mm;border-bottom:1.2px solid #000}
+.gl-head img{height:15mm;width:auto}
+.gl-head span{flex:1;text-align:center;font-size:17pt;font-weight:800;letter-spacing:3mm;padding-right:15mm}
 .gl-made{border:1.2px solid #000;border-left:0;display:flex;align-items:center;justify-content:center;text-align:center;font:900 40pt/1.15 Arial,"Malgun Gothic",sans-serif}
 .gl-row.made{column-gap:0}
 .gl-empty{border:0}
 /* 작게: A4 한 장에 10장(2×5) */
 .gl-page.sm{grid-template-rows:repeat(5,1fr);row-gap:4mm;padding:7mm 7mm}
-.sm .gl-label th.gl-title{font-size:9pt;padding:0.3mm 0}
+.sm .gl-head{padding:0.6mm 1.5mm}.sm .gl-head img{height:10mm}.sm .gl-head span{font-size:12pt;letter-spacing:2mm;padding-right:10mm}
 .sm .gl-label td.gl-k{font-size:7.5pt}.sm .gl-label td.gl-v{font-size:8.5pt}
 .sm .gl-label td.gl-v.s{font-size:7.5pt}.sm .gl-label td.gl-v.xs{font-size:6pt}
-.sm .gl-logo{padding:0.5mm}.sm .gl-logo img{max-height:7.5mm}
+
 @media print{@page{size:A4 portrait;margin:0}}`;
 
   // 거래처(c)·제품(p)·출력 옵션(opt: qty, date) → 현품표 칸 목록
@@ -49,10 +51,10 @@
   function oneLabel(c, p, opt, logo) {
     const sz = v => (String(v).length > 34 ? ' xs' : String(v).length > 19 ? ' s' : '');
     const rows = labelRows(c, p, opt);
-    const h = (opt.small ? Math.min(4.6, 36 / rows.length) : Math.min(7.6, 62 / rows.length)).toFixed(2); // 줄이 많아도 로고까지 한 칸 안에 들어가게
-    return `<div class="gl-label"><table><tr><th class="gl-title" colspan="2">현품표</th></tr>
+    const h = (opt.small ? Math.min(5, 38 / rows.length) : Math.min(8.6, 72 / rows.length)).toFixed(2); // 줄이 많아도 한 칸 안에 들어가게
+    return `<div class="gl-label"><div class="gl-head">${logo ? `<img src="${esc(logo)}" alt="GAON TECH">` : ''}<span>현품표</span></div><table>
       ${rows.map(([k, v]) => `<tr><td class="gl-k" style="height:${h}mm">${esc(k)}</td><td class="gl-v${sz(v)}" style="height:${h}mm">${esc(v)}</td></tr>`).join('')}
-      </table><div class="gl-logo">${logo ? `<img src="${esc(logo)}" alt="GAON TECH">` : ''}</div></div>`;
+      </table></div>`;
   }
 
   // count 장을 A4 페이지들로
