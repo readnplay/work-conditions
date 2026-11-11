@@ -11,11 +11,11 @@ const [inFile, outFile] = process.argv.slice(2);
 if (!inFile || !outFile) { console.error('사용: node tools/label.mjs <입력.json> <출력.pdf>'); process.exit(1); }
 const here = import.meta.dirname;
 new Function(fs.readFileSync(path.join(here, '../label.js'), 'utf8'))();
-const { LABEL_CSS, labelPagesHTML, MOLD_CSS, moldTagPagesHTML } = globalThis.GaonLabel;
+const { LABEL_CSS, labelPagesHTML, MOLD_CSS, moldTagPagesHTML, BAG_CSS, bagLabelPagesHTML } = globalThis.GaonLabel;
 
 const req = JSON.parse(fs.readFileSync(inFile, 'utf8').replace(/^\uFEFF/, ''));
 let { customer, product } = req;
-if (req.type !== 'mold' && (!customer || !product)) {
+if (!['mold', 'bag'].includes(req.type) && (!customer || !product)) {
   const U = process.env.APP_URL || 'https://work-conditions.vercel.app';
   const pin = fs.readFileSync(path.join(here, '../../seed/PIN.txt'), 'utf8').trim();
   const lr = await fetch(U + '/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pin }) });
@@ -27,15 +27,24 @@ if (req.type !== 'mold' && (!customer || !product)) {
 }
 const logo = 'data:image/png;base64,' + fs.readFileSync(path.join(here, '../logo.png')).toString('base64');
 const dataUrl = f => `data:image/${/.png$/i.test(f) ? 'png' : 'jpeg'};base64,` + fs.readFileSync(f).toString('base64');
-const body = req.type === 'mold'
+// 포대 라벨: { type:'bag', tag:{customer, name, sub, code, qty, photos:[로컬 사진 경로], outline}, count }
+const kind = req.type || 'label';
+const body = kind === 'mold'
   ? moldTagPagesHTML({ ...req.tag, photo: req.tag.photo ? dataUrl(req.tag.photo) : '' }, req.count, logo)
-  : labelPagesHTML(customer, product, { qty: req.qty, date: req.date, count: req.count, small: req.small }, logo);
-const html = `<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>${req.type === 'mold' ? '금형 표찰' : '현품표'}</title><style>body{margin:0}${req.type === 'mold' ? MOLD_CSS : LABEL_CSS}</style></head>
-<body>${body}</body></html>`;
+  : kind === 'bag'
+    ? bagLabelPagesHTML({ ...req.tag, photos: (req.tag.photos || []).map(dataUrl) }, req.count, logo)
+    : labelPagesHTML(customer, product, { qty: req.qty, date: req.date, count: req.count, small: req.small }, logo);
+const css = { mold: MOLD_CSS, bag: BAG_CSS, label: LABEL_CSS }[kind];
+const title = { mold: '금형 표찰', bag: '포대 라벨', label: '현품표' }[kind];
+// 포대 라벨은 사진을 윤곽선으로 바꾸는 스크립트를 페이지 안에서 실행
+const script = kind === 'bag' ? `<script>${fs.readFileSync(path.join(here, '../label.js'), 'utf8')}
+GaonLabel.outlineImages();</script>` : '';
+const html = `<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>${title}</title><style>body{margin:0}${css}</style></head>
+<body>${body}${script}</body></html>`;
 const htmlFile = outFile.replace(/\.pdf$/i, '') + '.html';
 fs.writeFileSync(htmlFile, html);
 
 const edge = ['C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe', 'C:/Program Files/Microsoft/Edge/Application/msedge.exe'].find(f => fs.existsSync(f));
 if (!edge) { console.log('Edge가 없어 HTML만 만들었습니다:', htmlFile); process.exit(0); }
-execFileSync(edge, ['--headless=new', '--disable-gpu', '--no-pdf-header-footer', `--print-to-pdf=${path.resolve(outFile)}`, 'file:///' + path.resolve(htmlFile).replace(/\\/g, '/')], { stdio: 'ignore' });
+execFileSync(edge, ['--headless=new', '--disable-gpu', '--no-pdf-header-footer', '--virtual-time-budget=8000', `--print-to-pdf=${path.resolve(outFile)}`, 'file:///' + path.resolve(htmlFile).replace(/\\/g, '/')], { stdio: 'ignore' });
 console.log('PDF:', path.resolve(outFile), fs.statSync(outFile).size, 'bytes');

@@ -190,5 +190,80 @@
     return pages.join('');
   }
 
-  g.GaonLabel = { LABEL_CSS, labelRows, labelPagesHTML, MOLD_CSS, moldTagPagesHTML };
+  // ───── 포대(박스) 라벨: A4 가로 1/3 크기(200×93mm), 한 장에 3장 ─────
+  // 멀리서도 보이게 제품명·수량을 크게, 잉크를 아끼려고 제품 사진은 윤곽선 그림으로 바꿔 찍음(outlineImages)
+  const BAG_CSS = `
+.bg-page{width:210mm;height:297mm;padding:5mm;box-sizing:border-box;display:grid;grid-template-rows:repeat(3,1fr);row-gap:3mm;page-break-after:always;break-after:page;background:#fff;color:#000}
+.bg-page:last-child{page-break-after:auto;break-after:auto}
+.bg{border:1px dashed #999;display:grid;grid-template-columns:92mm 1fr;min-height:0;font-family:"Malgun Gothic","맑은 고딕",sans-serif;overflow:hidden}
+.bg-ph{display:flex;align-items:center;justify-content:center;gap:2mm;padding:3mm}
+.bg-ph img,.bg-ph canvas{max-width:100%;max-height:86mm;object-fit:contain}
+.bg-ph.two img,.bg-ph.two canvas{max-width:48%}
+.bg-tx{display:flex;flex-direction:column;justify-content:center;padding:3mm 5mm 3mm 2mm;min-width:0;position:relative}
+.bg-cu{font-size:13pt;font-weight:700;color:#333}
+.bg-nm{font-size:46pt;font-weight:900;line-height:1.05;letter-spacing:-0.5mm;word-break:keep-all}
+.bg-nm.m{font-size:38pt}.bg-nm.s{font-size:28pt}
+.bg-sub{display:flex;gap:3mm;align-items:center;margin-top:2mm;flex-wrap:wrap}
+.bg-tag{border:1.5mm solid #000;border-radius:3mm;padding:0.5mm 3mm;font-size:24pt;font-weight:900;line-height:1.1}
+.bg-code{font-size:16pt;font-weight:800}
+.bg-qty{margin-top:3mm;font-size:50pt;font-weight:900;line-height:1}
+.bg-qty small{font-size:16pt;font-weight:700;margin-right:3mm}
+.bg-logo{position:absolute;right:4mm;bottom:3mm;height:9mm;opacity:.85}
+@media print{@page{size:A4 portrait;margin:0}}`;
+
+  // d: {customer, name, sub(예: '일반' / '전도성'), code, qty, photos:[이미지 주소], outline:true}
+  function oneBagLabel(d, logo) {
+    const nmLen = String(d.name || '').length;
+    const ph = (d.photos || []).slice(0, d.twoPhotos ? 2 : 1); // 기본은 크게 1장
+    return `<div class="bg">
+      <div class="bg-ph${ph.length > 1 ? ' two' : ''}">${ph.map(src => `<img${d.outline === false ? '' : ' data-outline="1"'} src="${esc(src)}" alt="">`).join('')}</div>
+      <div class="bg-tx">
+        <div class="bg-cu">${esc(d.customer || '')}</div>
+        <div class="bg-nm${nmLen > 14 ? ' s' : nmLen > 9 ? ' m' : ''}">${esc(d.name || '')}</div>
+        <div class="bg-sub">${d.sub ? `<span class="bg-tag">${esc(d.sub)}</span>` : ''}${d.code ? `<span class="bg-code">${esc(d.code)}</span>` : ''}</div>
+        ${d.qty ? `<div class="bg-qty"><small>수량</small>${esc(d.qty)}</div>` : ''}
+        ${logo ? `<img class="bg-logo" src="${esc(logo)}" alt="GAON TECH">` : ''}
+      </div></div>`;
+  }
+  function bagLabelPagesHTML(d, count = 3, logo = 'logo.png') {
+    const n = Math.max(1, Math.min(60, parseInt(count, 10) || 3));
+    const tags = Array.from({ length: n }, () => oneBagLabel(d, logo));
+    const pages = [];
+    for (let i = 0; i < tags.length; i += 3) {
+      const t = tags.slice(i, i + 3);
+      pages.push(`<div class="bg-page">${t.join('')}${'<div></div>'.repeat(3 - t.length)}</div>`);
+    }
+    return pages.join('');
+  }
+  // 어두운 제품 사진 → 흑백으로 밝게: 배경은 흰색, 제품은 최대 약 55% 회색(잉크 절약, 모양은 사진 그대로)
+  function outlineImages(root) {
+    const imgs = [...(root || document).querySelectorAll('img[data-outline]')];
+    return Promise.all(imgs.map(img => new Promise(done => {
+      const run = () => {
+        try {
+          const W = img.naturalWidth, H = img.naturalHeight;
+          const c = document.createElement('canvas'); c.width = W; c.height = H;
+          const x = c.getContext('2d'); x.drawImage(img, 0, 0);
+          const d = x.getImageData(0, 0, W, H), px = d.data, n = W * H;
+          const lum = new Float32Array(n);
+          for (let i = 0; i < n; i++) lum[i] = 0.3 * px[i * 4] + 0.59 * px[i * 4 + 1] + 0.11 * px[i * 4 + 2];
+          const srt = Array.from(lum).sort((p, q) => p - q);
+          const dark = srt[Math.floor(n * 0.03)], bg = srt[Math.floor(n * 0.6)]; // 제품(어두움)·배경(밝은 쪽) 밝기
+          const hi = dark + (bg - dark) * 0.55; // 이보다 밝으면 흰색(배경 무늬 지움)
+          for (let i = 0; i < n; i++) {
+            let t = (lum[i] - dark) / (hi - dark); t = t < 0 ? 0 : t > 1 ? 1 : t; // 0 = 제품, 1 = 배경
+            t = Math.pow(t, 0.8);
+            const v = 255 - (1 - t) * 255 * 0.55; // 가장 진한 곳도 55% 잉크
+            px[i * 4] = px[i * 4 + 1] = px[i * 4 + 2] = v;
+          }
+          x.putImageData(d, 0, 0);
+          c.style.cssText = img.style.cssText; c.className = img.className; img.replaceWith(c);
+        } catch (e) { /* 실패하면 원래 사진 그대로 */ }
+        done();
+      };
+      img.complete && img.naturalWidth ? run() : (img.onload = run, img.onerror = done);
+    })));
+  }
+
+  g.GaonLabel = { LABEL_CSS, labelRows, labelPagesHTML, MOLD_CSS, moldTagPagesHTML, BAG_CSS, bagLabelPagesHTML, outlineImages };
 })(typeof window !== 'undefined' ? window : globalThis);
