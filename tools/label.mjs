@@ -29,7 +29,7 @@ const logo = 'data:image/png;base64,' + fs.readFileSync(path.join(here, '../logo
 const dataUrl = f => `data:image/${/.png$/i.test(f) ? 'png' : 'jpeg'};base64,` + fs.readFileSync(f).toString('base64');
 const body = req.type === 'mold'
   ? moldTagPagesHTML({ ...req.tag, photo: req.tag.photo ? dataUrl(req.tag.photo) : '' }, req.count, logo)
-  : labelPagesHTML(customer, product, { qty: req.qty, date: req.date, count: req.count }, logo);
+  : labelPagesHTML(customer, product, { qty: req.qty, date: req.date, count: req.count, small: req.small }, logo);
 const html = `<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>${req.type === 'mold' ? '금형 표찰' : '현품표'}</title><style>body{margin:0}${req.type === 'mold' ? MOLD_CSS : LABEL_CSS}</style></head>
 <body>${body}</body></html>`;
 const htmlFile = outFile.replace(/\.pdf$/i, '') + '.html';

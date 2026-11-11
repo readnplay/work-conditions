@@ -411,6 +411,7 @@ function labelView(body, rs) {
       <label>수량<input id="lbQty" value="${esc(p.pack || '')}" placeholder="예: 1,500 EA"></label>
       <label>생산일자<input id="lbDate" placeholder="비우면 손으로 쓰는 칸"></label>
       <label style="flex:0 0 110px">장 수<input id="lbCount" type="number" min="1" max="300" value="${made ? 3 : 6}"></label>
+      <label style="flex:0 0 auto"><input type="checkbox" id="lbSmall" style="min-height:auto;width:auto;display:inline"> 작게 (A4에 8장)</label>
     </div>
     ${p.pack2 ? `<p class="muted">포장 수량: 소포장 ${esc(p.pack)} / 포대 ${esc(p.pack2)} — 필요한 쪽을 수량 칸에 넣으세요.</p>` : ''}
     <div class="row" style="margin-top:8px">
@@ -427,13 +428,14 @@ function labelView(body, rs) {
     <p class="muted">A4 한 장에 ${made ? '3장(MADE IN KOREA 포함)' : '6장'}. 휴대폰에서는 인쇄 화면에서 프린터를 고르거나 PDF로 저장할 수 있습니다.</p>
     <div id="lbPrev" style="overflow:hidden;border:1px solid var(--line);border-radius:8px;margin-top:8px;background:#fff"></div>
   </div>`;
-  const opt = () => ({ qty: $('#lbQty').value.trim(), date: $('#lbDate').value.trim(), count: $('#lbCount').value });
+  const opt = () => ({ qty: $('#lbQty').value.trim(), date: $('#lbDate').value.trim(), count: $('#lbCount').value, small: $('#lbSmall').checked });
   const preview = () => {
     const box = $('#lbPrev'); const w = box.clientWidth || 340; const sc = w / 794; // A4 폭 210mm ≈ 794px
     box.style.height = Math.round(1123 * sc) + 'px';
-    box.innerHTML = `<div style="transform:scale(${sc});transform-origin:0 0;width:794px">${GaonLabel.labelPagesHTML(c, p, { ...opt(), count: made ? 3 : 6 }, '/logo.png')}</div>`;
+    box.innerHTML = `<div style="transform:scale(${sc});transform-origin:0 0;width:794px">${GaonLabel.labelPagesHTML(c, p, { ...opt(), count: $('#lbSmall').checked ? (made ? 4 : 8) : (made ? 3 : 6) }, '/logo.png')}</div>`;
   };
   ['lbQty', 'lbDate'].forEach(id => $('#' + id).oninput = preview);
+  $('#lbSmall').onchange = () => { $('#lbCount').value = $('#lbSmall').checked ? (made ? 4 : 8) : (made ? 3 : 6); preview(); };
   // 금형 표찰: 제품목록 + 최근 기록에서 모음
   const condRec = rs.find(r => r.params && Object.keys(r.params.values || {}).length);
   const prodPhoto = rs.flatMap(r => r.photos || []).find(ph => ph.tag === '제품');

@@ -20,6 +20,12 @@
 .gl-made{border:1.2px solid #000;border-left:0;display:flex;align-items:center;justify-content:center;text-align:center;font:900 40pt/1.15 Arial,"Malgun Gothic",sans-serif}
 .gl-row.made{column-gap:0}
 .gl-empty{border:0}
+/* 작게: A4 한 장에 8장(2×4) */
+.gl-page.sm{grid-template-rows:repeat(4,1fr);row-gap:5mm}
+.sm .gl-label th.gl-title{font-size:10pt;padding:0.6mm 0}
+.sm .gl-label td.gl-k{font-size:8.5pt}.sm .gl-label td.gl-v{font-size:9.5pt}
+.sm .gl-label td.gl-v.s{font-size:8pt}.sm .gl-label td.gl-v.xs{font-size:6.5pt}
+.sm .gl-logo img{max-height:10mm}
 @media print{@page{size:A4 portrait;margin:0}}`;
 
   // 거래처(c)·제품(p)·출력 옵션(opt: qty, date) → 현품표 칸 목록
@@ -43,7 +49,7 @@
   function oneLabel(c, p, opt, logo) {
     const sz = v => (String(v).length > 34 ? ' xs' : String(v).length > 19 ? ' s' : '');
     const rows = labelRows(c, p, opt);
-    const h = Math.min(7.6, 62 / rows.length).toFixed(2); // 줄이 많아도 로고까지 한 칸 안에 들어가게
+    const h = (opt.small ? Math.min(5.8, 44 / rows.length) : Math.min(7.6, 62 / rows.length)).toFixed(2); // 줄이 많아도 로고까지 한 칸 안에 들어가게
     return `<div class="gl-label"><table><tr><th class="gl-title" colspan="2">현품표</th></tr>
       ${rows.map(([k, v]) => `<tr><td class="gl-k" style="height:${h}mm">${esc(k)}</td><td class="gl-v${sz(v)}" style="height:${h}mm">${esc(v)}</td></tr>`).join('')}
       </table><div class="gl-logo">${logo ? `<img src="${esc(logo)}" alt="GAON TECH">` : ''}</div></div>`;
@@ -52,15 +58,16 @@
   // count 장을 A4 페이지들로
   function labelPagesHTML(c, p, opt = {}, logo = 'logo.png') {
     const made = !!(c && c.label && c.label.madeIn);
-    const n = Math.max(1, Math.min(300, parseInt(opt.count, 10) || (made ? 3 : 6)));
+    const per = opt.small ? 4 : 3; // 한 장의 줄 수
+    const n = Math.max(1, Math.min(300, parseInt(opt.count, 10) || (made ? per : per * 2)));
     const rowsHtml = [];
     if (made) for (let i = 0; i < n; i++) rowsHtml.push(`<div class="gl-row made">${oneLabel(c, p, opt, logo)}<div class="gl-made">MADE IN<br>KOREA</div></div>`);
     else for (let i = 0; i < n; i += 2) rowsHtml.push(`<div class="gl-row">${oneLabel(c, p, opt, logo)}${i + 1 < n ? oneLabel(c, p, opt, logo) : '<div class="gl-empty"></div>'}</div>`);
     const pages = [];
-    for (let i = 0; i < rowsHtml.length; i += 3) {
-      const r = rowsHtml.slice(i, i + 3);
-      while (r.length < 3) r.push('<div></div>');
-      pages.push(`<div class="gl-page">${r.join('')}</div>`);
+    for (let i = 0; i < rowsHtml.length; i += per) {
+      const r = rowsHtml.slice(i, i + per);
+      while (r.length < per) r.push('<div></div>');
+      pages.push(`<div class="gl-page${opt.small ? ' sm' : ''}">${r.join('')}</div>`);
     }
     return pages.join('');
   }
