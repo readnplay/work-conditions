@@ -209,18 +209,31 @@
 .bg-qty{margin-top:3mm;font-size:50pt;font-weight:900;line-height:1}
 .bg-qty small{font-size:16pt;font-weight:700;margin-right:3mm}
 .bg-logo{position:absolute;right:4mm;bottom:3mm;height:9mm;opacity:.85}
+.bg-ph{position:relative}
+.bg-mk{position:absolute;border:1.2mm solid #000;border-radius:2mm;background:#fff;padding:0 2mm;font-size:18pt;font-weight:900;line-height:1.2}
+.bg-mk.tl{left:2mm;top:2mm}.bg-mk.br{right:2mm;bottom:2mm}.bg-mk.bl{left:2mm;bottom:2mm}.bg-mk.tr{right:2mm;top:2mm}
+.bg.marked .bg-tag{font-size:30pt;border-width:2mm}
+.bg-mk2{position:absolute;right:5mm;top:3mm;border:1.2mm solid #000;border-radius:2mm;padding:0 2mm;font-size:18pt;font-weight:900;line-height:1.2}
+.bolt{height:.95em;width:auto;vertical-align:-.12em;margin-right:.08em}
+.bg-tag .bolt,.bg-mk .bolt,.bg-mk2 .bolt{display:inline-block}
 @media print{@page{size:A4 portrait;margin:0}}`;
 
   // d: {customer, name, sub(예: '일반' / '전도성'), code, qty, photos:[이미지 주소], outline:true}
   function oneBagLabel(d, logo) {
     const nmLen = String(d.name || '').length;
     const ph = (d.photos || []).slice(0, d.twoPhotos ? 2 : 1); // 기본은 크게 1장
-    return `<div class="bg">
-      <div class="bg-ph${ph.length > 1 ? ' two' : ''}">${ph.map(src => `<img${d.outline === false ? '' : ' data-outline="1"'} src="${esc(src)}" alt="">`).join('')}</div>
+    // 전도성은 헷갈리지 않게 번개 표시 + 사진 네 귀퉁이·오른쪽 위에도 표시(사용자 요청 2026-11-16). 테두리 글자라 잉크 적게 씀
+    const marked = d.marks !== undefined ? !!d.marks : /전도성/.test(d.sub || '');
+    const bolt = '<svg class="bolt" viewBox="0 0 24 32"><path d="M14 1 3 18h8l-3 13 13-19h-8l3-11z" fill="none" stroke="#000" stroke-width="2.6" stroke-linejoin="round"/></svg>';
+    const sub = d.sub ? (marked ? bolt : '') + esc(d.sub) : '';
+    const mk = marked ? ['tl', 'tr', 'bl', 'br'].map(p => `<span class="bg-mk ${p}">${sub}</span>`).join('') : '';
+    return `<div class="bg${marked ? ' marked' : ''}">
+      <div class="bg-ph${ph.length > 1 ? ' two' : ''}">${ph.map(src => `<img${d.outline === false ? '' : ' data-outline="1"'} src="${esc(src)}" alt="">`).join('')}${mk}</div>
       <div class="bg-tx">
+        ${marked ? `<span class="bg-mk2">${sub}</span>` : ''}
         <div class="bg-cu">${esc(d.customer || '')}</div>
         <div class="bg-nm${nmLen > 14 ? ' s' : nmLen > 9 ? ' m' : ''}">${esc(d.name || '')}</div>
-        <div class="bg-sub">${d.sub ? `<span class="bg-tag">${esc(d.sub)}</span>` : ''}${d.code ? `<span class="bg-code">${esc(d.code)}</span>` : ''}</div>
+        <div class="bg-sub">${d.sub ? `<span class="bg-tag">${sub}</span>` : ''}${d.code ? `<span class="bg-code">${esc(d.code)}</span>` : ''}</div>
         ${d.qty ? `<div class="bg-qty"><small>수량</small>${esc(d.qty)}</div>` : ''}
         ${logo ? `<img class="bg-logo" src="${esc(logo)}" alt="GAON TECH">` : ''}
       </div></div>`;
