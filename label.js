@@ -49,7 +49,8 @@
     rows.push(['GRADE', p.grade || '']);
     rows.push(['색상', p.color || '']);
     rows.push(['수량', opt.qty ?? p.pack ?? '']);
-    rows.push(['생산일자', opt.date || '']);
+    // 생산일자는 기본으로 뺌(사용자 요청 2026-11-19). 거래처 label.showDate 가 true 일 때만 넣음
+    if (L.showDate) rows.push(['생산일자', opt.date || '']);
     const hide = L.hide || [];
     return rows.filter(([k, v]) => !hide.includes(k) && !(k === '규격' && !String(v).trim()));
   }
