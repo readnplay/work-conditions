@@ -27,6 +27,12 @@
 .sm .gl-head{padding:0.6mm 1.5mm}.sm .gl-head img{height:10mm}.sm .gl-head span{font-size:12pt;letter-spacing:2mm;padding-right:10mm}
 .sm .gl-label td.gl-k{font-size:7.5pt}.sm .gl-label td.gl-v{font-size:8.5pt}
 .sm .gl-label td.gl-v.s{font-size:7.5pt}.sm .gl-label td.gl-v.xs{font-size:6pt}
+/* 크게: A4 한 장에 4장(2×2) — 박스에 크게 붙이는 용(사용자 요청 2026-11-19) */
+.gl-page.lg{grid-template-rows:repeat(2,1fr);row-gap:8mm;padding:8mm 7mm}
+.lg .gl-head{padding:1.5mm 3mm}.lg .gl-head img{height:18mm}.lg .gl-head span{font-size:24pt;letter-spacing:3mm;padding-right:12mm;white-space:nowrap}
+.lg .gl-label{border-width:2px}
+.lg .gl-label td.gl-k{font-size:13pt}.lg .gl-label td.gl-v{font-size:17pt}
+.lg .gl-label td.gl-v.q{font-size:24pt;font-weight:900}.lg .gl-label td.gl-v.s{font-size:13pt}.lg .gl-label td.gl-v.xs{font-size:10pt}
 
 @media print{@page{size:A4 portrait;margin:0}}`;
 
@@ -51,16 +57,16 @@
   function oneLabel(c, p, opt, logo) {
     const sz = v => (String(v).length > 34 ? ' xs' : String(v).length > 19 ? ' s' : '');
     const rows = labelRows(c, p, opt);
-    const h = (opt.small ? Math.min(5, 38 / rows.length) : Math.min(8.6, 72 / rows.length)).toFixed(2); // 줄이 많아도 한 칸 안에 들어가게
+    const h = (opt.big ? Math.min(14, 104 / rows.length) : opt.small ? Math.min(5, 38 / rows.length) : Math.min(8.6, 72 / rows.length)).toFixed(2); // 줄이 많아도 한 칸 안에 들어가게
     return `<div class="gl-label"><div class="gl-head">${logo ? `<img src="${esc(logo)}" alt="GAON TECH">` : ''}<span>현품표</span></div><table>
-      ${rows.map(([k, v]) => `<tr><td class="gl-k" style="height:${h}mm">${esc(k)}</td><td class="gl-v${sz(v)}" style="height:${h}mm">${esc(v)}</td></tr>`).join('')}
+      ${rows.map(([k, v]) => `<tr><td class="gl-k" style="height:${h}mm">${esc(k)}</td><td class="gl-v${k === '수량' ? ' q' : sz(v)}" style="height:${h}mm">${esc(v)}</td></tr>`).join('')}
       </table></div>`;
   }
 
   // count 장을 A4 페이지들로
   function labelPagesHTML(c, p, opt = {}, logo = 'logo.png') {
     const made = !!(c && c.label && c.label.madeIn);
-    const per = opt.small ? 5 : 3; // 한 장의 줄 수
+    const per = opt.big ? 2 : opt.small ? 5 : 3; // 한 장의 줄 수
     const n = Math.max(1, Math.min(300, parseInt(opt.count, 10) || (made ? per : per * 2)));
     const rowsHtml = [];
     if (made) for (let i = 0; i < n; i++) rowsHtml.push(`<div class="gl-row made">${oneLabel(c, p, opt, logo)}<div class="gl-made">MADE IN<br>KOREA</div></div>`);
@@ -69,7 +75,7 @@
     for (let i = 0; i < rowsHtml.length; i += per) {
       const r = rowsHtml.slice(i, i + per);
       while (r.length < per) r.push('<div></div>');
-      pages.push(`<div class="gl-page${opt.small ? ' sm' : ''}">${r.join('')}</div>`);
+      pages.push(`<div class="gl-page${opt.big ? ' lg' : opt.small ? ' sm' : ''}">${r.join('')}</div>`);
     }
     return pages.join('');
   }

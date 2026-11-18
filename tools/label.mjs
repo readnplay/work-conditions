@@ -33,7 +33,7 @@ const body = kind === 'mold'
   ? moldTagPagesHTML({ ...req.tag, photo: req.tag.photo ? dataUrl(req.tag.photo) : '' }, req.count, logo)
   : kind === 'bag'
     ? bagLabelPagesHTML({ ...req.tag, photos: (req.tag.photos || []).map(dataUrl) }, req.count, logo)
-    : labelPagesHTML(customer, product, { qty: req.qty, date: req.date, count: req.count, small: req.small }, logo);
+    : labelPagesHTML(customer, product, { qty: req.qty, date: req.date, count: req.count, small: req.small, big: req.big }, logo);
 const css = { mold: MOLD_CSS, bag: BAG_CSS, label: LABEL_CSS }[kind];
 const title = { mold: '금형 표찰', bag: '포대 라벨', label: '현품표' }[kind];
 // 포대 라벨은 사진을 윤곽선으로 바꾸는 스크립트를 페이지 안에서 실행
@@ -46,5 +46,8 @@ fs.writeFileSync(htmlFile, html);
 
 const edge = ['C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe', 'C:/Program Files/Microsoft/Edge/Application/msedge.exe'].find(f => fs.existsSync(f));
 if (!edge) { console.log('Edge가 없어 HTML만 만들었습니다:', htmlFile); process.exit(0); }
+fs.rmSync(outFile, { force: true }); // 예전 PDF가 남아 있으면 새로 만든 것처럼 보이므로 먼저 지움
 execFileSync(edge, ['--headless=new', '--disable-gpu', '--no-pdf-header-footer', '--virtual-time-budget=8000', `--print-to-pdf=${path.resolve(outFile)}`, 'file:///' + path.resolve(htmlFile).replace(/\\/g, '/')], { stdio: 'ignore' });
+// Edge가 이미 켜져 있으면 PDF를 조금 늦게 씀 → 최대 20초 기다림
+for (let i = 0; i < 40 && !fs.existsSync(outFile); i++) await new Promise(r => setTimeout(r, 500));
 console.log('PDF:', path.resolve(outFile), fs.statSync(outFile).size, 'bytes');
