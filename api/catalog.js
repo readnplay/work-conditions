@@ -19,7 +19,7 @@ function clean(input) {
       // 현품표 칸: 규격·원료·GRADE·색상·포장수량(소포장/BOX, 포대)·UL·MODEL. lcode/lname 은 현품표에 다르게 찍을 때(빈칸 포함)
       const item = { code, name: pname, note: s(p.note, 200) };
       for (const k of ['spec', 'material', 'grade', 'color', 'pack', 'pack2', 'ul', 'model', 'mold', 'weight', 'price']) if (p[k]) item[k] = s(p[k], 200);
-      for (const k of ['lcode', 'lname']) if (typeof p[k] === 'string') item[k] = s(p[k], 200);
+      for (const k of ['lcode', 'lname', 'lmaterial']) if (typeof p[k] === 'string') item[k] = s(p[k], 200);
       // 단가 이력(거래명세서 발행·장부): 최근 50건
       if (Array.isArray(p.priceHist)) item.priceHist = p.priceHist.slice(-50).map(h => ({ date: s(h.date, 20), price: Number(h.price) || 0, qty: Number(h.qty) || 0, src: s(h.src, 40) }));
       products.push(item);
