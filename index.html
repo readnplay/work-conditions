@@ -602,7 +602,7 @@ function parseLines(text, old = []) {
     CAT_COLS.forEach(([k], i) => { if (cols[i]) p[k] = cols[i]; });
     // 표에 없는 값(메모, 현품표 표기)은 기존 것 유지
     const prev = old.find(o => pidOf(o) === (p.code || p.name));
-    if (prev) for (const k of ['note', 'lcode', 'lname']) if (prev[k] !== undefined) p[k] = prev[k];
+    if (prev) for (const k of ['note', 'lcode', 'lname', 'lmaterial']) if (prev[k] !== undefined) p[k] = prev[k];
     return p;
   }).filter(p => p.code || p.name);
 }

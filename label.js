@@ -53,7 +53,7 @@
     rows.push([L.codeLabel || '품목번호', p.lcode ?? p.code ?? '']);
     rows.push(['품명', p.lname ?? p.name ?? '']);
     rows.push(['규격', p.spec || '']);
-    rows.push(['원료', p.material || '']);
+    rows.push(['원료', p.lmaterial ?? p.material ?? '']); // lmaterial: 현품표에만 다르게 쓸 원료(앱 원료는 실제 배합)
     rows.push(['GRADE', p.grade || '']);
     rows.push(['색상', p.color || '']);
     rows.push(['수량', opt.qty ?? p.pack ?? '']);
