@@ -33,6 +33,14 @@
 .lg .gl-label{border-width:2px}
 .lg .gl-label td.gl-k{font-size:13pt}.lg .gl-label td.gl-v{font-size:17pt}
 .lg .gl-label td.gl-v.q{font-size:24pt;font-weight:900}.lg .gl-label td.gl-v.s{font-size:13pt}.lg .gl-label td.gl-v.xs{font-size:10pt}
+/* 가로형: A4 한 장에 4장(1×4), 가로로 긴 박스용(사용자 요청 2026-11-23) */
+.gl-page.wd{grid-template-rows:repeat(4,1fr);row-gap:6mm;padding:8mm 7mm}
+.wd .gl-row{grid-template-columns:1fr}
+.wd .gl-head{padding:1mm 3mm}.wd .gl-head img{height:12mm}.wd .gl-head span{font-size:22pt;letter-spacing:4mm;padding-right:30mm;white-space:nowrap}
+.wd .gl-label{border-width:2px}.wd .gl-label table{flex:1}
+.wd .gl-label td.gl-k{width:15%;font-size:12pt;border-left:1px dotted #555}.wd .gl-label tr td:first-child{border-left:0}.wd .gl-label td.gl-v{width:35%;font-size:15pt}
+.wd .gl-label td.gl-v.big{font-size:34pt;font-weight:900;line-height:1}
+.wd .gl-label td.gl-v.q{font-size:38pt;font-weight:900;line-height:1}.wd .gl-label td.gl-v.s{font-size:12pt}.wd .gl-label td.gl-v.xs{font-size:9pt}
 
 @media print{@page{size:A4 portrait;margin:0}}`;
 
@@ -55,7 +63,24 @@
     return rows.filter(([k, v]) => !hide.includes(k) && !(k === '규격' && !String(v).trim()));
   }
 
+  // 가로형: 품명·수량은 한 줄 전체, 나머지는 두 개씩 나란히
+  function wideLabel(c, p, opt, logo) {
+    const sz = v => (String(v).length > 34 ? ' xs' : String(v).length > 19 ? ' s' : '');
+    const lines = [];
+    let pend = null;
+    for (const r of labelRows(c, p, opt)) {
+      if (r[0] === '품명' || r[0] === '수량') { if (pend) { lines.push([pend]); pend = null; } lines.push([r]); }
+      else if (pend) { lines.push([pend, r]); pend = null; } else pend = r;
+    }
+    if (pend) lines.push([pend]);
+    const cell = ([k, v], full) => `<td class="gl-k">${esc(k)}</td><td class="gl-v${k === '수량' ? ' q' : k === '품명' ? ' big' : sz(v)}"${full ? ' colspan="3"' : ''}>${esc(v)}</td>`;
+    return `<div class="gl-label"><div class="gl-head">${logo ? `<img src="${esc(logo)}" alt="GAON TECH">` : ''}<span>현품표</span></div><table>
+      ${lines.map(l => `<tr>${l.length === 2 ? cell(l[0]) + cell(l[1]) : cell(l[0], true)}</tr>`).join('')}
+      </table></div>`;
+  }
+
   function oneLabel(c, p, opt, logo) {
+    if (opt.wide) return wideLabel(c, p, opt, logo);
     const sz = v => (String(v).length > 34 ? ' xs' : String(v).length > 19 ? ' s' : '');
     const rows = labelRows(c, p, opt);
     const h = (opt.big ? Math.min(14, 104 / rows.length) : opt.small ? Math.min(5, 38 / rows.length) : Math.min(8.6, 72 / rows.length)).toFixed(2); // 줄이 많아도 한 칸 안에 들어가게
@@ -67,16 +92,17 @@
   // count 장을 A4 페이지들로
   function labelPagesHTML(c, p, opt = {}, logo = 'logo.png') {
     const made = !!(c && c.label && c.label.madeIn);
-    const per = opt.big ? 2 : opt.small ? 5 : 3; // 한 장의 줄 수
+    const per = opt.wide ? 4 : opt.big ? 2 : opt.small ? 5 : 3; // 한 장의 줄 수
     const n = Math.max(1, Math.min(300, parseInt(opt.count, 10) || (made ? per : per * 2)));
     const rowsHtml = [];
     if (made) for (let i = 0; i < n; i++) rowsHtml.push(`<div class="gl-row made">${oneLabel(c, p, opt, logo)}<div class="gl-made">MADE IN<br>KOREA</div></div>`);
+    else if (opt.wide) for (let i = 0; i < n; i++) rowsHtml.push(`<div class="gl-row">${oneLabel(c, p, opt, logo)}</div>`);
     else for (let i = 0; i < n; i += 2) rowsHtml.push(`<div class="gl-row">${oneLabel(c, p, opt, logo)}${i + 1 < n ? oneLabel(c, p, opt, logo) : '<div class="gl-empty"></div>'}</div>`);
     const pages = [];
     for (let i = 0; i < rowsHtml.length; i += per) {
       const r = rowsHtml.slice(i, i + per);
       while (r.length < per) r.push('<div></div>');
-      pages.push(`<div class="gl-page${opt.big ? ' lg' : opt.small ? ' sm' : ''}">${r.join('')}</div>`);
+      pages.push(`<div class="gl-page${opt.wide ? ' wd' : opt.big ? ' lg' : opt.small ? ' sm' : ''}">${r.join('')}</div>`);
     }
     return pages.join('');
   }

@@ -33,7 +33,7 @@ const body = kind === 'mold'
   ? moldTagPagesHTML({ ...req.tag, photo: req.tag.photo ? dataUrl(req.tag.photo) : '' }, req.count, logo)
   : kind === 'bag'
     ? bagLabelPagesHTML({ ...req.tag, photos: (req.tag.photos || []).map(dataUrl) }, req.count, logo)
-    : labelPagesHTML(customer, product, { qty: req.qty, date: req.date, count: req.count, small: req.small, big: req.big }, logo);
+    : labelPagesHTML(customer, product, { qty: req.qty, date: req.date, count: req.count, small: req.small, big: req.big, wide: req.wide }, logo);
 const css = { mold: MOLD_CSS, bag: BAG_CSS, label: LABEL_CSS }[kind];
 const title = { mold: '금형 표찰', bag: '포대 라벨', label: '현품표' }[kind];
 // 포대 라벨은 사진을 윤곽선으로 바꾸는 스크립트를 페이지 안에서 실행
